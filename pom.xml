@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- The Basics -->
+  <groupId>swlaschin.sonarqube.fsharp</groupId>
+  <artifactId>sonar-fsharpsecurity-analyzer</artifactId>
+  <version>0.0.0.1</version>
+  <packaging>pom</packaging>
+  <parent>
+    <groupId>org.sonarsource.parent</groupId>
+    <artifactId>parent</artifactId>
+    <version>52</version>
+  </parent>
+  <modules>
+    <module>SonarAnalyzer.FSharp</module>
+    <module>sonar-fsharpsecurity-plugin</module>
+  </modules>
+  <properties>
+    <configuration>Debug</configuration>
+    <jacoco.version>0.8.4</jacoco.version>
+  </properties>
+
+  <!-- Build Settings -->
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>3.6.0.1398</version>
+          <executions>
+            <execution>
+              <phase>verify</phase>
+              <goals>
+                <goal>sonar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>${jacoco.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <!-- More Project Information -->
+  <name>SonarQube F# Security Analyzer Plugin</name>
+  <description>SonarQube F# Security Analyzer Plugin</description>
+  <url>https://github.com/swlaschin/sonar-fsharpsecurity-plugin</url>
+  <inceptionYear>2015</inceptionYear>
+  <licenses>
+    <license>
+      <name>GNU Lesser General Public License, version 3</name>
+      <url>https://opensource.org/licenses/LGPL-3.0</url>
+      <distribution >manual</distribution >
+    </license>
+  </licenses>
+  <organization>
+    <name>swlashcin</name>
+    <url>https://github.com/swlaschin</url>
+  </organization>
+  <developers>
+    <!-- Information about one of the committers on this project -->
+    <developer>
+      <id>swlaschin</id>
+      <name>Scott Wlaschin</name>
+      <organization>swlaschin</organization>
+      <organizationUrl>https://github.com/swlaschin</organizationUrl>
+      <roles>
+        <role>owner</role>
+      </roles>
+    </developer>
+  </developers>
+  <contributors>
+    <!-- Description of a person who has contributed to the project, but who does not have commit privileges. -->
+  </contributors>
+
+  <!-- Environment Settings -->
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/swlaschin/sonar-fsharpsecurity-plugin/issues</url>
+  </issueManagement>
+  <ciManagement>
+    <system>AppVeyor</system>
+    <url>https://ci.appveyor.com/project/swlaschin/sonar-fsharpsecurity-plugin-wxq94</url>
+  </ciManagement>
+  <scm>
+    <connection>scm:git:https://github.com/swlaschin/sonar-fsharpsecurity-plugin.git</connection>
+    <url>https://github.com/swlaschin/sonar-fsharpsecurity-plugin</url>
+  </scm>
+  <profiles>
+    <profile>
+      <id>sonar</id>
+      <properties>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.organization>sonar-fsharpsecurity-plugin</sonar.organization>
+        <!-- <sonar.login></sonar.login> -->
+      </properties>
+    </profile>
+  </profiles>
+</project>

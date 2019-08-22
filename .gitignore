@@ -328,3 +328,19 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
+
+# this project only
+/sonaranalyzer-fsharp/.paket/.store
+
+.sonarqube
+.scannerwork
+
+.paket
+.ionide
+.project
+.settings
+.vscode
+/sonar-fsharpsecurity-plugin/target/
+/SonarAnalyzer.FSharp/target
+*.zip

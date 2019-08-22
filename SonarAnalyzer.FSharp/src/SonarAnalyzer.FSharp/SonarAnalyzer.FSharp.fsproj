@@ -1,0 +1,74 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" />
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="RspecStrings.fs" />
+    <Compile Include="Domain.fs" />
+    <Compile Include="RuleHelpers.fs" />
+    <Content Include="Rules.Description\notes.txt" />
+    <EmbeddedResource Include="Rules.Description\S1104.html" />
+    <EmbeddedResource Include="Rules.Description\S1313.html" />
+    <EmbeddedResource Include="Rules.Description\S2068.html" />
+    <EmbeddedResource Include="Rules.Description\S2070.html" />
+    <EmbeddedResource Include="Rules.Description\S2077.html" />
+    <EmbeddedResource Include="Rules.Description\S2092.html" />
+    <EmbeddedResource Include="Rules.Description\S2228.html" />
+    <EmbeddedResource Include="Rules.Description\S2245.html" />
+    <EmbeddedResource Include="Rules.Description\S2255.html" />
+    <EmbeddedResource Include="Rules.Description\S2278.html" />
+    <EmbeddedResource Include="Rules.Description\S2386.html" />
+    <EmbeddedResource Include="Rules.Description\S2486.html" />
+    <EmbeddedResource Include="Rules.Description\S3011.html" />
+    <EmbeddedResource Include="Rules.Description\S3330.html" />
+    <EmbeddedResource Include="Rules.Description\S3884.html" />
+    <EmbeddedResource Include="Rules.Description\S4211.html" />
+    <EmbeddedResource Include="Rules.Description\S4212.html" />
+    <EmbeddedResource Include="Rules.Description\S4426.html" />
+    <EmbeddedResource Include="Rules.Description\S4432.html" />
+    <EmbeddedResource Include="Rules.Description\S4433.html" />
+    <EmbeddedResource Include="Rules.Description\S4507.html" />
+    <EmbeddedResource Include="Rules.Description\S4564.html" />
+    <EmbeddedResource Include="Rules.Description\S4784.html" />
+    <EmbeddedResource Include="Rules.Description\S4787.html" />
+    <EmbeddedResource Include="Rules.Description\S4790.html" />
+    <EmbeddedResource Include="Rules.Description\S4792.html" />
+    <EmbeddedResource Include="Rules.Description\S4818.html" />
+    <EmbeddedResource Include="Rules.Description\S4823.html" />
+    <EmbeddedResource Include="Rules.Description\S4829.html" />
+    <EmbeddedResource Include="Rules.Description\S4834.html" />
+    <EmbeddedResource Include="Rules.Description\S5042.html" />
+    <Compile Include="Rules\Hotspots\S1313_HardcodedIpAddress.fs" />
+    <Compile Include="Rules\Hotspots\S2077_ExecutingSqlQueries.fs" />
+    <Compile Include="Rules\Hotspots\S2092_CookieShouldBeSecure.fs" />
+    <Compile Include="Rules\Hotspots\S2245_DoNotUseRandom.fs" />
+    <Compile Include="Rules\Hotspots\S2255_UsingCookies.fs" />
+    <Compile Include="Rules\Hotspots\S3011_BypassingAccessibility.fs" />
+    <Compile Include="Rules\Hotspots\S4507_DeliveringDebugFeaturesInProduction.fs" />
+    <Compile Include="Rules\Hotspots\S4784_UsingRegularExpressions.fs" />
+    <Compile Include="Rules\Hotspots\S4787_EncryptingData.fs" />
+    <Compile Include="Rules\Hotspots\S4790_CreatingHashAlgorithms.fs" />
+    <Compile Include="Rules\Hotspots\S4792_ConfiguringLoggers.fs" />
+    <Compile Include="Rules\Hotspots\S4818_SocketsCreation.fs" />
+    <Compile Include="Rules\Hotspots\S4823_UsingCommandLineArguments.fs" />
+    <Compile Include="Rules\Hotspots\S4829_ReadingStandardInput.fs" />
+    <Compile Include="Rules\Hotspots\S4834_ControllingPermissions.fs" />
+    <Compile Include="Rules\Hotspots\S5042_ExpandingArchiveFiles.fs" />
+    <Compile Include="RuleManager.fs" />
+    <Compile Include="RuleRunner.fs" />
+    <None Include="InteractiveExamples.fsx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FSharpAst\FSharpAst.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.6.2" />
+  </ItemGroup>
+
+</Project>

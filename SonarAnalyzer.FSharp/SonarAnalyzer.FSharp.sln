@@ -1,0 +1,63 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2041
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "SonarAnalyzer.FSharp", "src\SonarAnalyzer.FSharp\SonarAnalyzer.FSharp.fsproj", "{6C0CDC3D-E193-4BC4-ABB4-5A4166FF2270}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "SonarAnalyzer.FSharp.UnitTest", "tests\SonarAnalyzer.FSharp.UnitTest\SonarAnalyzer.FSharp.UnitTest.fsproj", "{DC59291E-4AE3-45A4-A4D6-2CFE20285D1B}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FSharpAst", "src\FSharpAst\FSharpAst.fsproj", "{6725F379-DE05-47EF-85C0-ED26E3F40C37}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{57C64AD9-8467-4CC9-812B-FE66953E4F42}"
+	ProjectSection(SolutionItems) = preProject
+		paket.dependencies = paket.dependencies
+	EndProjectSection
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FSharpAst.UnitTest", "tests\FSharpAst.UnitTest\FSharpAst.UnitTest.fsproj", "{E9B8895E-375B-46F1-9F5D-C27D4BF28EDA}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSonarRunner", "src\FsSonarRunner\FsSonarRunner.fsproj", "{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{A3E30814-9225-4601-B09B-577EB58EA62A}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\contributing-analyzer.md = ..\docs\contributing-analyzer.md
+		..\docs\contributing-plugin.md = ..\docs\contributing-plugin.md
+		..\CONTRIBUTING.md = ..\CONTRIBUTING.md
+		README.md = README.md
+		..\README.md = ..\README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6C0CDC3D-E193-4BC4-ABB4-5A4166FF2270}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C0CDC3D-E193-4BC4-ABB4-5A4166FF2270}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C0CDC3D-E193-4BC4-ABB4-5A4166FF2270}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C0CDC3D-E193-4BC4-ABB4-5A4166FF2270}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC59291E-4AE3-45A4-A4D6-2CFE20285D1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC59291E-4AE3-45A4-A4D6-2CFE20285D1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC59291E-4AE3-45A4-A4D6-2CFE20285D1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC59291E-4AE3-45A4-A4D6-2CFE20285D1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6725F379-DE05-47EF-85C0-ED26E3F40C37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6725F379-DE05-47EF-85C0-ED26E3F40C37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6725F379-DE05-47EF-85C0-ED26E3F40C37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6725F379-DE05-47EF-85C0-ED26E3F40C37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9B8895E-375B-46F1-9F5D-C27D4BF28EDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9B8895E-375B-46F1-9F5D-C27D4BF28EDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9B8895E-375B-46F1-9F5D-C27D4BF28EDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9B8895E-375B-46F1-9F5D-C27D4BF28EDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0F744F1A-CC7B-476C-BE57-B88EAB91EAC8}
+	EndGlobalSection
+EndGlobal

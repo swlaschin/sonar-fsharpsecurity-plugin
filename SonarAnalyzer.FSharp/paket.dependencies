@@ -1,0 +1,8 @@
+source https://www.nuget.org/api/v2
+
+nuget FSharp.Compiler.Service
+
+group Build
+//nuget FAKE
+
+
