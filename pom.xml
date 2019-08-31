@@ -81,7 +81,7 @@
     </license>
   </licenses>
   <organization>
-    <name>swlashcin</name>
+    <name>swlaschin</name>
     <url>https://github.com/swlaschin</url>
   </organization>
   <developers>
@@ -107,7 +107,7 @@
   </issueManagement>
   <ciManagement>
     <system>AppVeyor</system>
-    <url>https://ci.appveyor.com/project/swlaschin/sonar-fsharpsecurity-plugin-wxq94</url>
+    <url>https://ci.appveyor.com/project/swlaschin/sonar-fsharpsecurity-plugin</url>
   </ciManagement>
   <scm>
     <connection>scm:git:https://github.com/swlaschin/sonar-fsharpsecurity-plugin.git</connection>

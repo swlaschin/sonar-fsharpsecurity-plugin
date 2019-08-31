@@ -1,63 +1,123 @@
-# sonar-fsharp-security
+# sonar-fsharpsecurity-plugin
 
-sonar-fsharp-security is a F# plugin for SonarQube. It contain rules for security/vuln scanning only.
+sonar-fsharpsecurity-plugin is a F# plugin for SonarQube focused on security/vuln scanning only.
 
 ## Rationale
 
-Many enterprises use the SonarC# and SonarVB [static code analysers] for scanning C# and VB.NET code to check for security and vulnerability issues.
+Many enterprises use the SonarC# and SonarVB static code analysers for scanning C# and VB.NET code to check for security and vulnerability issues.
 
-In some cases, this scanning is *required* before deployment. For another .NET language like F# to be accepted at these companies, an equivalent scanning tool is required.
+In some cases, this scanning is *required* before deployment. For another .NET language such as F# to be accepted at these companies, an equivalent scanning tool is required.
 The lack of such a tool is a hard blocker for F# acceptance.
 
 SonarQube themselves have not built an F# plugin, hence this project.
 
-The code is closely based on the C# code at https://github.com/SonarSource/sonar-dotnet. It uses exactly the same test suites (translated to F#) and the same rules (translated to F#).
-This is to short circuit any complaints about the logic used. If it's good enough for C#, it's good enough for F#.
+The code is closely based on the C# code at https://github.com/SonarSource/sonar-dotnet.
+It uses exactly the same test suites (translated to F#) and the same rules (translated to F#).
+This is to short circuit any complaints about the logic used. If it's good enough for C#, it's good enough for F#!
 
 ## Features
 
-* 19 "Security Hotspot" rules have been ported from C# ([C# rules here](https://rules.sonarsource.com/csharp))
-* 26 "Vulnerabilities" rules are coming soon
+* 19 "Security Hotspot" rules have been ported from C# ([C# rules here](https://rules.sonarsource.com/csharp)).
+* 26 "Vulnerabilities" rules are coming soon.
 
-## How to test locally 
 
-1. Install the demo version of SonarQube. [Instructions here](https://docs.sonarqube.org/latest/setup/get-started-2-minutes/)
-1. Run the server with `StartSonar.bat` and make sure you can see the site at http://localhost:9000 
-1. [Get a user token, aka login key](https://docs.sonarqube.org/latest/user-guide/user-token/)
-1. Download [the plugin .jar file from Appveyor](https://ci.appveyor.com/project/swlaschin/sonar-fsharpsecurity-plugin-wxq94/build/artifacts)
-1. Copy the plugin .jar file to the [SonarQube plugins directory](https://docs.sonarqube.org/latest/setup/install-plugin/) and restart SonarQube
-1. Install [SonarScanner](https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/)
+## How to run SonarQube locally 
+
+NOTE: You will need a recent version of the JDK (v11 or newer). If you don't have it, follow instructions below on "Installing Java and Maven".
+
+Install SonarQube:
+
+1. Install the demo version of SonarQube. [Instructions here](https://docs.sonarqube.org/latest/setup/get-started-2-minutes/).
+1. Run the server with `StartSonar.bat` and make sure you can see the site at http://localhost:9000. Make sure `JAVA_HOME` or equivalent is set.
+
+Install the plugin:
+
+1. Download [the plugin `sonar-fsharpsecurity-plugin.jar` file from Appveyor](https://ci.appveyor.com/project/swlaschin/sonar-fsharpsecurity-plugin/build/artifacts).
+1. Shut down SonarQube, then copy the plugin `sonar-fsharpsecurity-plugin.jar` file to the [SonarQube plugins directory](https://docs.sonarqube.org/latest/setup/install-plugin/) and restart SonarQube.
+
+Prepare for using SonarScanner:
+
+1. [Get a user token, aka login key](https://docs.sonarqube.org/latest/user-guide/user-token/).
+1. Install [SonarScanner](https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/).
 
 Now you can try running the scanner!
 
-1. Create a project in the SonaQube UI
+1. In the SonarQube UI, create a project such as `myProject`.
 1. Go to the directory containing the F# project
-1. Run the following (assumes that `sonar-scanner.bat` in on your path and your login token is `01234567890`)
+1. Run the following (assumes that `sonar-scanner.bat` is not already on your path and your login token is `01234567890`)
 
 ```
-sonar-scanner.bat -D"sonar.projectKey=myProject" -D"sonar.sources=." -D"sonar.host.url=http://localhost:9000" -D"sonar.login=01234567890"
+set JAVA_HOME=path\to\jdk // optional
+set SONARSCANNER=path\to\sonar-scanner\bin
+%SONARSCANNER%\sonar-scanner.bat -D"sonar.projectKey=myProject" -D"sonar.sources=." -D"sonar.host.url=http://localhost:9000" -D"sonar.login=01234567890"
 ```
 
 You can eliminate the need for the `host.url` and `login` parameters by editing `$install_directory/conf/sonar-scanner.properties`. 
-([Instructions](https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/))
+([Instructions](https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/)).
+
+## To run directly without using the SonarQube server
+
+The plugin contains an executable (`FsSonarRunner`) that can be run on its own. To use this:
+
+1. Download the plugin as described above
+1. Unzip the .JAR file to reveal the `SonarAnalyzer.FSharp.zip` 
+1. Unzip `SonarAnalyzer.FSharp.zip` to reveal a `win-x86` directory. 
+1. Copy this directory to your favorite location.
+
+To run, just do:
+
+```
+FsSonarRunner
+```
+
+This will show the available command line options.
+
+As a demonstration, try running it on the test cases which are part of the test suite
+
+```
+FsSonarRunner -d .\SonarAnalyzer.FSharp\tests\SonarAnalyzer.FSharp.UnitTest\TestCases
+```
+
 
 ## Have question or feedback?
 
 To provide feedback (request a feature, report a bug etc.), simply
 [create a GitHub Issue](https://github.com/swlaschin/sonar-fsharpsecurity-plugin/issues/new).
 
-## Compiling locally
+## How the plugin works
 
 The plugin is a mix of Java (under `sonar-fsharpsecurity-plugin`) and F# (under `SonarAnalyzer.FSharp`).  
 
-The plugin itself is written in Java and is loaded when `sonar-scanner` is used. The way is works is that sonar provides a number of abstract classes which
-the plugin then implements. In this case the plugin executes the F# executable, which dumps out the results as files.
-he plugin then reads these files in and stores them in the database associated with the server.
+The plugin itself is written in Java and is loaded when `sonar-scanner` is used. The way it works is that Sonar provides a number of abstract classes which
+the plugin then implements. 
 
+* Sonar asks the plugin what file extensions it wants. The plugin returns `.fs` and `.fsproj`, etc.
+* Sonar asks the plugin what rules it supports. In this case, the plugin returns the list using an XML file generated by the F# executable called `FsSolarRunner.exe` (using the `--export` option).
+* The Sonar server may know that the user has asked for some of these rules not to run (to avoid the same errors over and over again)
+* Sonar then passes the rules and the files into the plugin 
+* The plugin analyzes those files. In this case the plugin:
+  * writes those rules and files to an XML file
+  * then executes the F# executable (`FsSolarRunner.exe`) passing that input file as parameter
+  * the F# exe dumps out the results as files.
+  * the plugin then reads these files in to memory
+* Finally the plugin returns them to the Solar framework which stores them in the database associated with the server.
 
 * [Building, testing and debugging the Java plugin](./docs/contributing-plugin.md)
 * [Building, testing and debugging the F# analyzer](./docs/contributing-analyzer.md)
-* [Using the rspec.ps1 script](./scripts/rspec/README.md)
+
+
+## Installing Java and Maven on Windows
+
+To install on Windows, I recommend using the [Chocolatey package manager](https://chocolatey.org/).
+
+You'll need to install:
+
+* [OpenJDK](https://chocolatey.org/packages/openjdk) using `choco install openjdk`
+* For building, you'll also need [Maven](https://chocolatey.org/packages/maven) using `choco install maven`
+
+## Installing Java and Maven on other platforms
+
+Use your preferred package manager, such as `apt-get`.
 
 ## How to contribute
 

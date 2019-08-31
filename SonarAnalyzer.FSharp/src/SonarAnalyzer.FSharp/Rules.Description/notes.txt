@@ -1,0 +1,53 @@
+There is a mismatch between what is on sonarsource.com and what is in the source code at https://github.com/SonarSource/sonar-dotnet/tree/master/sonaranalyzer-dotnet/src/SonarAnalyzer.Utilities/Rules.Description
+
+
+W(eb) = On sonarsource.com
+S(ource) = In github source code
+
+Vulnerabilities -- 26 rules (15 implemented in C#)
+
+WS  #1104 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-1104 Fields should not have public accessibility
+WS  #2068 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2068 Credentials should not be hard-coded
+WS  #2070 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2070 SHA-1 and Message-Digest hash algorithms should not be used in secure contexts
+W   #2076 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2076 OS commands should not be vulnerable to injection attacks
+W   #2078 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2078 LDAP queries should not be vulnerable to injection attacks
+W   #2083 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2083 I/O function calls should not be vulnerable to path injection attacks
+W   #2091 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2091 XPath expressions should not be vulnerable to injection attacks
+WS  #2228 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2228 Console logging should not be used
+WS  #2278 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2278 Neither DES (Data Encryption Standard) nor DESede (3DES) should be used
+WS  #2386 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2386 Mutable fields should not be "public static"
+WS  #2486 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2486 Generic exceptions should not be ignored
+W   #2631 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-2631 Regular expressions should not be vulnerable to Denial of Service attacks
+WS  #3330 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-3330 "HttpOnly" should be set on cookies
+W   #3649 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-3649 Database queries should not be vulnerable to injection attacks
+WS  #3884 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-3884 "CoSetProxyBlanket" and "CoInitializeSecurity" should not be used
+WS  #4211 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-4211 Members should not have conflicting transparency annotations
+WS  #4212 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-4212 Serialization constructors should be secured
+WS  #4426 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-4426 Cryptographic keys should not be too short
+WS  #4432 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-4432 AES encryption algorithm should be used with secured mode
+WS  #4433 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-4433 LDAP connections should be authenticated
+WS  #4564 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-4564 ASP.NET HTTP request validation feature should not be disabled
+W   #5131 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-5131 Endpoints should not be vulnerable to reflected cross-site scripting (XSS) attacks
+W   #5144 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-5144 Server-side requests should not be vulnerable to forging attacks
+W   #5145 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-5145 Logging should not be vulnerable to injection attacks
+W   #5146 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-5146 HTTP request redirections should not be open to forging attacks
+W   #5167 https://rules.sonarsource.com/csharp/type/Vulnerability/RSPEC-5167 HTTP response headers should not be vulnerable to injection attacks
+  
+Security Hotspot -- 16 rules
+
+WS #1313 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-1313 Using hardcoded IP addresses is security-sensitive
+WS #2077 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-2077 Formatting SQL queries is security-sensitive
+WS #2092 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-2092 Creating cookies without the "secure" flag is security-sensitive
+WS #2245 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-2245 Using pseudorandom number generators (PRNGs) is security-sensitive
+WS #2255 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-2255 Writing cookies is security-sensitive
+WS #3011 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-3011 Changing or bypassing accessibility is security-sensitive
+WS #4507 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4507 Delivering code in production with debug features activated is security-sensitive
+WS #4784 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4784 Using regular expressions is security-sensitive
+WS #4787 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4787 Encrypting data is security-sensitive
+WS #4790 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4790 Hashing data is security-sensitive
+WS #4792 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4792 Configuring loggers is security-sensitive
+WS #4818 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4818 Using Sockets is security-sensitive
+WS #4823 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4823 Using command line arguments is security-sensitive
+WS #4829 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4829 Reading the Standard Input is security-sensitive
+WS #4834 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-4834 Controlling permissions is security-sensitive
+WS #5042 https://rules.sonarsource.com/csharp/type/Security%20Hotspot/RSPEC-5042 Expanding archive files is security-sensitive

@@ -7,7 +7,45 @@ open SonarAnalyzer.FSharp
 
 open Serilog
 open Serilog.Events
-open OutputDiagnostics
+
+// =========================================
+// Constants
+// =========================================
+
+/// Where configuration files live.
+/// This is always under the current directory,
+let SONARQUBE_CONF_DIR= @".sonarqube\conf"
+
+/// The target directory to write files to. This could be under the current directory,
+/// or a child of the directory contained a specified project
+let SONARQUBE_OUT_DIR = @".sonarqube\out"
+
+let DIAGNOSTICS_FILE = "sonarDiagnostics.xml"
+let ANALYSIS_CONFIG_FILE = "sonarAnalysisConfig.xml"
+
+// =========================================
+// mini domain to show the allowable options
+// =========================================
+
+type ConfigSource =
+    | SpecifiedFile of filename:string
+    | DefaultDir
+
+type OutputDir =
+    | SpecifiedOutputDir of filename:string
+    | DefaultOutputDir
+
+type AnalysisOptions =
+    | File of filename:string
+    | MultipleFiles of filenames:string list
+    | Directory of dirname:string
+    | Config of source:ConfigSource
+
+
+
+// =========================================
+// Logging
+// =========================================
 
 // set up logging
 do Serilog.Log.Logger <-
@@ -22,61 +60,24 @@ do Serilog.Log.Logger <-
 
 let logger = Serilog.Log.Logger
 
-// where configuration files live
-let SONARQUBE_CONF= @".sonarqube\conf"
-
-// the target to write files to
-let SONARQUBE_OUT = @".sonarqube\out"
 
 // =========================================
-// mini domain to show constrain allowable options
+// Utilities
 // =========================================
 
-type AnalysisOptions =
-    | File of filename:string
-    | MultipleFiles of filenames:string list
-    | Directory of dirname:string
-    | Config of filename:string
+// ensure the directory exists
+let ensure dirname = Directory.CreateDirectory(dirname) |> ignore; dirname
 
-type OutputTarget =
-    | OutputFile of filename:string
-    | OutputDefault
+let getConfigFilename (input:ConfigSource) =
 
-
-// =========================================
-// utilities
-// =========================================
-
-let getOutputFilename output (options:AnalysisOptions) =
-    // ensure the directory exists
-    let ensure dirname = Directory.CreateDirectory(dirname) |> ignore; dirname
-
-    match output with
-    | OutputFile filename ->
-        // a specific name was requested
+    match input with
+    | SpecifiedFile filename ->
+        // a specific filename was requested
         filename
-    | OutputDefault ->
-        match options with
-        | File filename ->
-            let dirname = FileInfo(filename).Directory.FullName
-            let outdir = Path.Combine(dirname,SONARQUBE_OUT) |> ensure
-            let outfile = Path.GetFileNameWithoutExtension(filename) |> sprintf "%s.sonarAnalysis.json"
-            Path.Combine(outdir,outfile)
-        | MultipleFiles filenames ->
-            let filename = filenames.[0]
-            let dirname = FileInfo(filename).Directory.FullName
-            let outdir = Path.Combine(dirname,SONARQUBE_OUT) |> ensure
-            let outfile = filename  |> sprintf "%s-and-more.sonarAnalysis.json"
-            Path.Combine(outdir,outfile)
-        | Directory dirname ->
-            let outdir = Path.Combine(dirname,SONARQUBE_OUT) |> ensure
-            let outfile = System.IO.DirectoryInfo(dirname).Name |> sprintf "%s.sonarAnalysis.json"
-            Path.Combine(outdir,outfile)
-        | Config filename ->
-            let dirname = FileInfo(filename).Directory.FullName
-            let outdir = Path.Combine(dirname,SONARQUBE_OUT) |> ensure
-            let outfile = Path.GetFileNameWithoutExtension(filename) |> sprintf "%s.sonarAnalysis.json"
-            Path.Combine(outdir,outfile)
+    | DefaultDir ->
+        let defaultDir = ensure SONARQUBE_CONF_DIR
+        Path.Combine(defaultDir,ANALYSIS_CONFIG_FILE)
+
 
 // give a list of files, include only ".fs" ones that exist
 let filterOnlyFsFiles (filenames:string list) =
@@ -91,6 +92,16 @@ let filterOnlyFsFiles (filenames:string list) =
         if not fileExists then logger.Warning("Skipping non-existent file {filename}", fn)
         fileExists
         )
+
+/// run a function inside a stopwatch
+let withStopwatchDo elapsedHandler f =
+    let stopwatch = System.Diagnostics.Stopwatch()
+    stopwatch.Start()
+    let result = f()
+    stopwatch.Stop()
+    elapsedHandler result stopwatch.Elapsed
+
+    // could add try/catch exception here?
 
 
 // =========================================
@@ -107,39 +118,112 @@ let printVersion() =
     printfn "FsSonarRunner: %s" (currentAssemblyVersion.ToString())
     printfn "SonarAnalyzer.FSharp: %s" (coreAssemblyVersion.ToString())
 
-let analyze (options:AnalysisOptions) output =
-    let outputFilename = getOutputFilename output options
+// =========================================
+// Analyze
+// =========================================
 
-    let stopwatch = System.Diagnostics.Stopwatch()
-    stopwatch.Start()
+/// Given some analysisOptions and an OutputTarget, construct the directory to write the results to.
+let getAnalysisOutputDir (output:OutputDir) (analysisOptions:AnalysisOptions) =
 
-    let diagnostics =
-        match options with
+    match output with
+    | SpecifiedOutputDir dirname ->
+        // a specific directory was requested
+        dirname
+    | DefaultOutputDir ->
+        match analysisOptions with
         | File filename ->
-            logger.Information("Analyze {filename}. Output={output}", filename, outputFilename)
-            let fsFiles = filterOnlyFsFiles [filename]
-            RuleRunner.analyzeFilesWithAllRules fsFiles
+            // for one file, use the parent directory of the file
+            FileInfo(filename).Directory.FullName |> ensure
         | MultipleFiles filenames ->
-            logger.Information("Analyze multiple files. Output={output}", outputFilename)
-            let fsFiles = filterOnlyFsFiles filenames
-            RuleRunner.analyzeFilesWithAllRules fsFiles
+            // for multiple files, use the parent directory of the first file
+            let filename = filenames.[0]
+            FileInfo(filename).Directory.FullName
         | Directory dirname ->
-            logger.Information("Analyze directory {dirname}. Output={output}", dirname, outputFilename)
-            let fsFiles = Directory.EnumerateFiles(dirname,"*.fs")
-            for filename in fsFiles do
-                logger.Information("...Adding file {filename}.", filename)
-            RuleRunner.analyzeFilesWithAllRules fsFiles
-        | Config xmlFilename ->
-            let config = XmlAnalysisConfig.toDomainConfig xmlFilename
-            RuleRunner.analyzeConfig config
+            // for a directory, use as is
+            dirname |> ensure
+        | Config (SpecifiedFile filename) ->
+            // use the parent directory of the config file
+            FileInfo(filename).Directory.FullName |> ensure
+        | Config (DefaultDir) ->
+            // use the default output directory
+            SONARQUBE_OUT_DIR
 
-    diagnostics |> OutputDiagnostics.outputTo outputFilename
+let makeAnalysisConfig filelist : AnalysisConfig.Root =
+    let files : AnalysisConfig.File list = filelist |> List.map (fun filename -> {Filename = filename} )
+    {
+        Settings = []
+        RuleSelection = AnalysisConfig.AllRules
+        FileSelection = AnalysisConfig.SelectedFiles files
+    }
 
-    let elapsedTime = stopwatch.Elapsed
-    logger.Information("Done. ElapsedTime={elapsedTime}. {diagnosticsCount} diagnostics found.", elapsedTime, diagnostics.Length)
+/// Analyze a file or a directory with the given options
+let analyze (analysisOptions:AnalysisOptions) output =
 
-let exportRules() =
-    RuleDescriptorFiles.write(SONARQUBE_CONF)
+    let outputdir = getAnalysisOutputDir output analysisOptions
+    let outputDiagnosticsFile = Path.Combine(outputdir, DIAGNOSTICS_FILE)
+    let outputConfigFilename = Path.Combine(outputdir, ANALYSIS_CONFIG_FILE)
+
+    // run this function inside a stopwatch
+    fun () ->
+        let config =
+            match analysisOptions with
+            | File filename ->
+                logger.Information("Analyze {filename}. Output={output}", filename, outputDiagnosticsFile)
+                let fsFiles = filterOnlyFsFiles [filename]
+                makeAnalysisConfig fsFiles
+            | MultipleFiles filenames ->
+                logger.Information("Analyze multiple files. Output={output}", outputDiagnosticsFile)
+                let fsFiles = filterOnlyFsFiles filenames
+                makeAnalysisConfig fsFiles
+            | Directory dirname ->
+                logger.Information("Analyze directory {dirname}. Output={output}", dirname, outputDiagnosticsFile)
+                let fsFiles = Directory.EnumerateFiles(dirname,"*.fs") |> Seq.toList
+                for filename in fsFiles do
+                    logger.Information("...Adding file {filename}.", filename)
+                makeAnalysisConfig fsFiles
+            | Config input ->
+                let inputConfigFilename = getConfigFilename input
+                ImportExportAnalysisConfig.import inputConfigFilename
+
+        let diagnostics = RuleRunner.analyzeConfig config
+
+        diagnostics |> OutputDiagnostics.outputTo outputDiagnosticsFile
+        config |> ImportExportAnalysisConfig.export outputConfigFilename
+
+        diagnostics
+
+    |> withStopwatchDo (fun diagnostics elapsedTime ->
+        logger.Information("Done. ElapsedTime={elapsedTime}. {diagnosticsCount} diagnostics found.", elapsedTime, diagnostics.Length)
+        )
+
+// =========================================
+// Export
+// =========================================
+
+/// Given an OutputTarget, construct the
+/// directory to export the rules to.
+let getExportRulesDir (output:OutputDir)  =
+
+    match output with
+    | SpecifiedOutputDir dirname ->
+        // a specific directory was requested
+        dirname
+    | DefaultOutputDir ->
+        // the default is the .sonarqube directory
+        SONARQUBE_CONF_DIR
+    |> ensure
+
+let exportRules output =
+
+    // run this function inside a stopwatch
+    fun () ->
+        let outputDir = getExportRulesDir output
+        ExportRuleDefinitions.write(outputDir)
+        ExportQualityProfile.write(outputDir)
+
+    |> withStopwatchDo (fun _ elapsedTime ->
+        logger.Information("Done. ElapsedTime={elapsedTime}. ", elapsedTime)
+        )
 
 
 // =========================================
@@ -148,23 +232,25 @@ let exportRules() =
 
 type CLIArguments =
     | [<AltCommandLine("-v")>] Version
-    | [<AltCommandLine("-c")>] Config of path:string
     | [<AltCommandLine("-f")>] File of path:string
     | [<AltCommandLine("-d")>] Directory of path:string
     | [<AltCommandLine("-p")>] Project of path:string
+    | [<AltCommandLine("-c")>] Config
+    | [<AltCommandLine("-ci")>] ConfigInput of path:string
+    | [<AltCommandLine("-od")>] OutputDir of path:string
     | [<AltCommandLine("-e")>] Export
-    | [<AltCommandLine("-o")>] Output of path:string
 with
     interface IArgParserTemplate with
         member s.Usage =
             match s with
-            | Version _ -> "show the version."
-            | Config _ -> "use a Sonar-format XML as input to specify which rules and which files to analyze."
-            | File _ -> "analyze the specified file."
-            | Directory _ -> "analyze the specified directory"
-            | Project _ -> "analyze the specified project."
-            | Export _ -> "export the rules as XML descriptor files"
-            | Output _ -> "The file to output the results too. If missing, output to stdout"
+            | Version _ -> "Show the version."
+            | File _ -> "Analyze the specified file."
+            | Directory _ -> "Analyze the specified directory"
+            | Project _ -> "Analyze the specified project."
+            | Config -> "Analyze the files and rules specified in the config file."
+            | ConfigInput _ -> "If the Config option is used, optionally specify the location of the config file.. If missing, use the default config (in .sonarqube directory)"
+            | OutputDir _ -> "The directory to output the diagnostics to. If missing, use the default location (the same directory that was analyzed)"
+            | Export _ -> "Export the rules and profile to the specified directory. This is only used when creating resources for the java plugin"
 
 
 let parser = ArgumentParser.Create<CLIArguments>(programName = "FsSonarRunner.exe")
@@ -177,17 +263,23 @@ let main argv =
         let results = parser.ParseCommandLine(inputs = argv, raiseOnUsage = true)
 
         let output =
-            if results.Contains Output then
-                let filename = results.GetResult Output
-                OutputTarget.OutputFile filename
+            if results.Contains OutputDir then
+                let dirname = results.GetResult OutputDir
+                SpecifiedOutputDir dirname
             else
-                OutputTarget.OutputDefault
+                DefaultOutputDir
+
+        let configInput =
+            if results.Contains ConfigInput then
+                let filename = results.GetResult ConfigInput
+                SpecifiedFile filename
+            else
+                DefaultDir
 
         if results.Contains Version then
             printVersion()
         elif results.Contains Config then
-            let configFile = results.GetResult Config
-            let options = AnalysisOptions.Config configFile
+            let options = AnalysisOptions.Config configInput
             analyze options output
         elif results.Contains File then
             let filenames = results.GetResults File
@@ -207,7 +299,7 @@ let main argv =
             //analyze options output
             logger.Error "Analyse project not implemented"
         elif results.Contains Export then
-            exportRules()
+            exportRules output
         else
             printUsage()
     with e ->

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<rules>
+  <rule>
+    <key>S5042</key>
+    <name>Expanding archive files is security-sensitive</name>
+    <description><![CDATA[<p>Expanding archive files is security-sensitive. For example, expanding archive files has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="https://wiki.sei.cmu.edu/confluence/display/java/IDS04-J.+Safely+extract+files+from+ZipInputStream">CERT, IDS04-J.</a> - Safely
+  extract files from ZipInputStream </li>
+  <li> Snyk Research Team: <a href="https://snyk.io/research/zip-slip-vulnerability">Zip Slip Vulnerability</a> </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a1</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>10min</remediationFunctionBaseEffort>
+  </rule>
+</rules>

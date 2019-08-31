@@ -35,41 +35,29 @@ let analyzeFileWithAllRules (filename:string) :Diagnostic list =
 
     filename |> analyzeFileWithRules rulesToUse
 
-/// run all the rules on all the .FS files in a directory
-let analyzeFilesWithAllRules (filenames:string seq) :Diagnostic list =
+
+/// analyze everything as specified in the AnalysisConfig
+let analyzeConfig (root:AnalysisConfig.Root)  :Diagnostic list =
 
     let availableRules = RuleManager.getAvailableRules()
     let rulesToUse =
-        availableRules
-        |> List.map (fun rule -> rule.Rule)
+        match root.RuleSelection with
+        | AnalysisConfig.AllRules ->
+            availableRules
+        | AnalysisConfig.SelectedRules selectedRules ->
+            let isSelected (availableRule:AvailableRule) =
+                selectedRules |> List.exists (fun selectedRule -> selectedRule.Key = availableRule.RuleId)
+            availableRules |> List.filter isSelected
 
-    filenames
-    |> Seq.toList
-    |> List.collect (analyzeFileWithRules rulesToUse)
+        |> List.map (fun availableRule -> availableRule.Rule)
 
-/// Use the config to determine which files to analyze
-/// and which rules to use
-let analyzeConfig (config:AnalysisConfig.Root) =
 
-    let availableRules = RuleManager.getAvailableRules()
-    let configuredRules =
-        config.Rules |> List.map (fun rule -> rule.Key) |> Set.ofList
-    let isConfigured ruleId =
-        if configuredRules.IsEmpty then
-            // if no rules configured, use all rules
-            true
-        else
-            configuredRules |> Set.contains ruleId
+    match root.FileSelection with
+    | AnalysisConfig.SelectedFiles files ->
+        files
+        |> List.collect (fun file -> analyzeFileWithRules rulesToUse file.Filename)
+    | AnalysisConfig.Projects _ -> failwithf "Projects not yet implemented"
 
-    let rulesToUse =
-        availableRules
-        |> List.filter (fun rule -> isConfigured rule.RuleId)
-        |> List.map (fun rule -> rule.Rule)
 
-    let configuredFiles =
-        config.Files |> List.map (fun file -> file.Filename)
-
-    configuredFiles
-    |> List.collect (analyzeFileWithRules rulesToUse)
 
 

@@ -22,6 +22,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.6.0</version>
         <executions>
+          <!-- dotnet clean  -->
           <execution>
             <id>dotnet-clean</id>
             <phase>clean</phase>
@@ -36,6 +37,7 @@
               </arguments>
             </configuration>
           </execution>
+          <!-- dotnet publish for win-x64 runtime  -->
           <execution>
             <id>dotnet-publish-win</id>
             <phase>package</phase>
@@ -57,6 +59,7 @@
               </arguments>
             </configuration>
           </execution>
+          <!-- dotnet publish for linux runtime  -->
           <execution>
             <id>dotnet-publish-linux</id>
             <phase>package</phase>
@@ -78,6 +81,7 @@
               </arguments>
             </configuration>
           </execution>
+          <!-- dotnet test  -->
           <execution>
             <id>dotnet-test</id>
             <phase>test</phase>
@@ -96,9 +100,31 @@
               </arguments>
             </configuration>
           </execution>
+          <!-- export the file files to the java side  -->
+          <execution>
+            <id>export rules</id>
+            <phase>package</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>dotnet</executable>
+              <workingDirectory>.</workingDirectory>
+              <arguments>
+                <argument>run</argument>
+                <argument> --project:./src/FsSonarRunner</argument>
+                <argument>--</argument>
+                <!-- Generate rules and profile over on java side -->
+                <argument>-e</argument>
+                <argument>-od</argument>
+                <argument>../sonar-fsharpsecurity-plugin/src/main/resources</argument>
+              </arguments>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
       <plugin>
+        <!-- zip up the exe and associated DLLs to be used as a resouce in the Java plugin -->
         <artifactId>maven-assembly-plugin</artifactId>
         <version>3.1.1</version>
         <configuration>

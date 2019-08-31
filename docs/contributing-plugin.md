@@ -1,39 +1,18 @@
 # Building, Testing and Debugging the SonarQube plugin
 
-## Working with the code
 
-1. Clone [this repository](https://github.com/swlaschin/sonar-fsharpsecurity-plugin.git)
-1. Download sub-modules `git submodule update --init --recursive`
-1. Build the F# code (from the root)
+
+## Getting the code
+
+* Clone [this repository](https://github.com/swlaschin/sonar-fsharpsecurity-plugin.git)
+* Download sub-modules `git submodule update --init --recursive`
+
+## To build and test
+
+* build the Java plugin .JAR file (from the root)
 
 ```
-dotnet build .\SonarAnalyzer.FSharp\SonarAnalyzer.FSharp.sln
-```
-
-1. Export the rules as xml files and copy them to the java project
-
-```
-dotnet run .\SonarAnalyzer.FSharp\src\FsSolarRunner -- -e 
-xcopy .\SonarAnalyzer.FSharp\src\FsSolarRunner\fsharp 
-```
-
-1. Build the Java plugin .JAR file (from the root)
-
-``
 mvn clean install
-```
-
-
-## Developing with Eclipse or IntelliJ
-
-When working with Eclipse or IntelliJ please follow the [sonar guidelines](https://github.com/SonarSource/sonar-developer-toolset)
-
-## Running Tests
-
-To run the F# unit tests:
-
-```
-dotnet test .\SonarAnalyzer.FSharp\SonarAnalyzer.FSharp.sln
 ```
 
 To run the Java unit tests:
@@ -41,6 +20,24 @@ To run the Java unit tests:
 ```
 mvn clean test
 ```
+
+
+## Developing with VS Code
+
+Install:
+
+* Language Support for Java by Red Hat -- [redhat.java](https://marketplace.visualstudio.com/items?itemName=redhat.java)
+* Microsoft Debugger for Java -- [vscjava.vscode-java-debug](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-debug)
+
+To debug a plugin, see [the instructions on the SonarQube site](https://docs.sonarqube.org/latest/extend/developing-plugin/)
+
+## Developing with Eclipse or IntelliJ
+
+When working with Eclipse or IntelliJ please follow the [sonar guidelines](https://github.com/SonarSource/sonar-developer-toolset)
+
+## Understanding the Sonar Plugin API
+
+See http://javadocs.sonarsource.org/7.9.1/apidocs/
 
 
 ## Contributing

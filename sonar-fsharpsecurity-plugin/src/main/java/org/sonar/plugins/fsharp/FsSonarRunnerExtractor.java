@@ -1,16 +1,17 @@
 /*
- * Sonar FSharp Plugin, open source software quality management tool.
+ * Sonar FSharpSecurity Plugin, open source software quality management tool.
  *
- * Sonar FSharp Plugin is free software; you can redistribute it and/or
+ * Sonar FSharpSecurity Plugin is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * Sonar FSharp Plugin is distributed in the hope that it will be useful,
+ * Sonar FSharpSecurity Plugin is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  */
+
 package org.sonar.plugins.fsharp;
 
 import org.sonar.api.batch.InstantiationStrategy;
@@ -25,25 +26,30 @@ import org.sonar.api.utils.log.Loggers;
 import org.sonar.plugins.fsharp.utils.OSInfo;
 import org.sonar.plugins.fsharp.utils.UnZip;
 
-// addapted from https://github.com/SonarSource/sonar-csharp
+/*
+Extract the FsSolarRunner from the zip file
+*/
+
+// adapted from https://github.com/SonarSource/sonar-csharp
 @InstantiationStrategy(InstantiationStrategy.PER_BATCH)
 @ScannerSide()
 public class FsSonarRunnerExtractor {
   public static final Logger LOG = Loggers.get(FsSonarRunnerExtractor.class);
-  private static final String N_SONARQUBE_ANALYZER = "FsSonarRunner";
-  private static final String N_SONARQUBE_ANALYZER_ZIP = N_SONARQUBE_ANALYZER + ".zip";
+  private static final String SONARQUBE_ANALYZER_EXE = "FsSonarRunner";
+  private static final String SONARQUBE_ANALYZER_ZIP = "SonarAnalyzer.FSharp.zip";
 
   private File file = null;
 
   public File executableFile(String workDir) throws IOException {
+    // once loaded, file is cached between calls
     if (file == null) {
       String filePath;
       switch (OSInfo.getOs()) {
       case WINDOWS:
-        filePath = "win-x86" + File.separator + N_SONARQUBE_ANALYZER + ".exe";
+        filePath = "win-x86" + File.separator + SONARQUBE_ANALYZER_EXE + ".exe";
         break;
       case LINUX:
-        filePath = "linux-x86" + File.separator + N_SONARQUBE_ANALYZER;
+        filePath = "linux-x86" + File.separator + SONARQUBE_ANALYZER_EXE;
         break;
       default:
         String msg = "Operation system `" + OSInfo.getOs().toString() + "`not supported";
@@ -51,7 +57,7 @@ public class FsSonarRunnerExtractor {
         throw new UnsupportedOperationException(msg);
       }
 
-      file = unzipProjectCheckerFile(filePath, workDir);
+      file = unzipAnalyzerFile(filePath, workDir);
       if (!file.canExecute() && !file.setExecutable(true)) {
         LOG.error("Could not set executable permission");
       }
@@ -60,16 +66,16 @@ public class FsSonarRunnerExtractor {
     return file;
   }
 
-  private File unzipProjectCheckerFile(String fileName, String workDir) throws IOException {
+  private File unzipAnalyzerFile(String fileName, String workDir) throws IOException {
     File toolWorkingDir = new File(workDir, "ProjectTools");
-    File zipFile = new File(workDir, N_SONARQUBE_ANALYZER_ZIP);
+    File zipFile = new File(workDir, SONARQUBE_ANALYZER_ZIP);
 
     if (zipFile.exists()) {
       return new File(toolWorkingDir, fileName);
     }
 
     try {
-      try (InputStream is = getClass().getResourceAsStream("/" + N_SONARQUBE_ANALYZER_ZIP)) {
+      try (InputStream is = getClass().getResourceAsStream("/" + SONARQUBE_ANALYZER_ZIP)) {
         Files.copy(is, zipFile.toPath());
       }
 

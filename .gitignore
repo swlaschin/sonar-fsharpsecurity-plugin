@@ -344,3 +344,6 @@ ASALocalRun/
 /sonar-fsharpsecurity-plugin/target/
 /SonarAnalyzer.FSharp/target
 *.zip
+/~notes
+/SonarAnalyzer.FSharp/tests/SonarAnalyzer.FSharp.UnitTest/TestCases/sonarDiagnostics.xml
+/SonarAnalyzer.FSharp/tests/SonarAnalyzer.FSharp.UnitTest/TestCases/sonarAnalysisConfig.xml

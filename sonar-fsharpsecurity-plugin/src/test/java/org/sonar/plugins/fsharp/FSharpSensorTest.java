@@ -1,17 +1,18 @@
 /*
- * Sonar FSharp Plugin, open source software quality management tool.
+ * Sonar FSharpSecurity Plugin, open source software quality management tool.
  *
- * Sonar FSharp Plugin is free software; you can redistribute it and/or
+ * Sonar FSharpSecurity Plugin is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * Sonar FSharp Plugin is distributed in the hope that it will be useful,
+ * Sonar FSharpSecurity Plugin is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  */
-package org.sonar.plugins.fsharp;
+
+ package org.sonar.plugins.fsharp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,10 +25,25 @@ import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
 import org.sonar.api.issue.NoSonarFilter;
 import org.sonar.api.measures.FileLinesContextFactory;
 
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.LogTester;
+import org.sonar.api.utils.log.LoggerLevel;
+
+/*
+Check that the analyzer works.
+
+The real unit tests are in the F# code, so we just need to check that it can be called without crashing.
+*/
+
 public class FSharpSensorTest {
+
+    private static final LogTester logTester = new LogTester();
+
+
     @Test
     public void describe_languageAndKey_asExpected() {
         // Arrange
+        logTester.setLevel(LoggerLevel.DEBUG);
         FsSonarRunnerExtractor extractor = new FsSonarRunnerExtractor();
         FileSystem fs = mock(FileSystem.class);
         FileLinesContextFactory fileLinesContextFactory = mock(FileLinesContextFactory.class);

@@ -16,6 +16,25 @@ open FSharpAst
 // Rule descriptions that are loaded from resource files
 // ===========================================
 
+type RuleSeverity =
+    | Info
+    | Minor
+    | Major  // default
+    | Critical
+    | Blocker
+    | Unknown
+    with
+    static member Default = RuleSeverity.Major
+
+type RuleType =
+    | CodeSmell // default
+    | Bug
+    | Vulnerability
+    | SecurityHotspot
+    | Unknown
+    with
+    static member Default = RuleType.CodeSmell
+
 type RuleParameter = {
     Key : string
     Description : string
@@ -25,10 +44,10 @@ type RuleParameter = {
 
 type RuleDetail = {
     Key : string
-    Type : string
     Title : string
-    Severity : string
     Description : string
+    Severity : RuleSeverity
+    Type : RuleType
     Tags : string list
     Parameters : RuleParameter list
     IsActivatedByDefault : bool
@@ -39,10 +58,10 @@ type RuleDetail = {
     with
     static member Default() = {
         Key = ""
-        Type = ""
         Title = ""
-        Severity = ""
         Description = ""
+        Severity = RuleSeverity.Default
+        Type = RuleType.Default
         Tags = []
         Parameters = []
         IsActivatedByDefault = false
@@ -61,14 +80,18 @@ module rec AnalysisConfig =
     /// and which files to process.
     type Root = {
         Settings : Setting list
-        Rules: Rule list
-        Files: File list
+        RuleSelection: RuleSelection
+        FileSelection: FileSelection
     }
 
     type Setting = {
         Key : string
         Value : string
     }
+
+    type RuleSelection =
+        | AllRules
+        | SelectedRules of Rule list
 
     type Rule = {
         Key : string
@@ -84,6 +107,13 @@ module rec AnalysisConfig =
         Filename : string
     }
 
+    type Project = {
+        Filename : string
+    }
+
+    type FileSelection =
+        | Projects of Project list
+        | SelectedFiles of File list
 
 // ===========================================
 // Attribute types that are attached to rules
@@ -137,14 +167,6 @@ type RuleParameterAttribute(key:string, ty:PropertyType, description:string, def
 // Diagnostic types
 // ===========================================
 
-/// Copied from https://docs.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.diagnosticseverity?view=roslyn-dotnet
-/// Also, the use of an enum means that "Error" here doesn't get mixed up with Result.Error :)
-type DiagnosticSeverity =
-    | Hidden = 0
-    | Info = 1
-    | Warning = 2
-    | Error = 3
-
 /// Context-free information about a diagnostic, independent of a specific failure.
 type DiagnosticDescriptor = {
     Id: string
@@ -153,18 +175,23 @@ type DiagnosticDescriptor = {
     HelpLinkUri : string
     MessageFormat : string
     Category: string
-    DefaultSeverity: DiagnosticSeverity
+    DefaultSeverity: RuleSeverity
     IsEnabledByDefault : bool
     CustomTags : string list
     }
     with
+    //TODO change to avoid IO in the middle of the app.
+    //Background: this was copied from the Sonar dotNet scanner. It loads data from the resource manager as part of setting
+    //up a rule -- I don't think this necessary and could be refactored to be cleaner.
+
     /// Create a DiagnosticDescriptor
-    static member Create(diagnosticId, messageFormat, resourceManager:ResourceManager, ?isEnabledByDefault, ?fadeOutCode) =
+    static member Create(diagnosticId, messageFormat, resourceManager:ResourceManager, ?isEnabledByDefault, ?defaultSeverity) =
         let resourceKey key = sprintf "%s_%s" diagnosticId key
         let isEnabledByDefaultRes =
             resourceManager.GetString(resourceKey "IsActivatedByDefault" )
             |> bool.Parse
         let isEnabledByDefault = isEnabledByDefault |> Option.defaultValue isEnabledByDefaultRes
+        let defaultSeverity = defaultSeverity |> Option.defaultValue RuleSeverity.Default
         let helpLink = String.Format(resourceManager.GetString("HelpLinkFormat"), diagnosticId.[1..])
 
         let customTags =
@@ -173,13 +200,12 @@ type DiagnosticDescriptor = {
             //if isEnabledByDefaultRes then tags.Add("SonarWay")
             tags |> Seq.toList
 
-        let fadeOutCode = fadeOutCode |> Option.defaultValue false
         {
             Id = diagnosticId
             Title = resourceManager.GetString(resourceKey "Title")
             MessageFormat = messageFormat
             Category = resourceManager.GetString(resourceKey "Category")
-            DefaultSeverity = if fadeOutCode then DiagnosticSeverity.Info else DiagnosticSeverity.Warning
+            DefaultSeverity = defaultSeverity
             IsEnabledByDefault = isEnabledByDefault
             HelpLinkUri = helpLink
             Description = resourceManager.GetString(resourceKey "Description")
@@ -191,7 +217,7 @@ type DiagnosticDescriptor = {
 type Diagnostic = {
     Descriptor: DiagnosticDescriptor
     Location : Tast.Location
-    Severity : DiagnosticSeverity
+    Severity : RuleSeverity
     MessageArgs: obj[]
     }
     with
@@ -210,6 +236,7 @@ type Diagnostic = {
         }
 
     static member CompilationError(fsharpErrorInfo:FSharp.Compiler.SourceCodeServices.FSharpErrorInfo) =
+        let severity = RuleSeverity.Blocker
         let location : Tast.Location = {
             FileName = fsharpErrorInfo.FileName
             StartLine = fsharpErrorInfo.StartLineAlternate
@@ -222,7 +249,7 @@ type Diagnostic = {
             Title = "Compilation Error"
             MessageFormat = "{0}"
             Category = ""
-            DefaultSeverity = DiagnosticSeverity.Error
+            DefaultSeverity = severity
             IsEnabledByDefault = false
             HelpLinkUri = ""
             Description = fsharpErrorInfo.Message
@@ -231,7 +258,7 @@ type Diagnostic = {
         {
         Descriptor = descriptor
         Location = location
-        Severity = DiagnosticSeverity.Error
+        Severity = severity
         MessageArgs = [||]
         }
 

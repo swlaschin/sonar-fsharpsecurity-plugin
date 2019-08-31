@@ -1,0 +1,1330 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<rules>
+  <rule>
+    <key>S5042</key>
+    <name>Expanding archive files is security-sensitive</name>
+    <description><![CDATA[<p>Expanding archive files is security-sensitive. For example, expanding archive files has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1263">CVE-2018-1263</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-16131">CVE-2018-16131</a> </li>
+</ul>
+<p>Applications that expand archive files (zip, tar, jar, war, 7z, ...) should verify the path where the archive's files are expanded and not trust
+blindly the content of the archive. Archive's files should not be expanded outside of the root directory where the archive is supposed to be expanded.
+Also, applications should control the size of the expanded data to not be a victim of Zip Bomb attack. Failure to do so could allow an attacker to use
+a specially crafted archive that holds directory traversal paths (e.g. ../../attacker.sh) or the attacker could overload the file system, processors
+or memory of the operating system where the archive is expanded making the target OS completely unusable.</p>
+<p>This rule raises an issue when code handle archives. The goal is to guide security code reviews.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> there is no validation of the name of the archive entry </li>
+  <li> there is no validation of the effective path where the archive entry is going to be expanded </li>
+  <li> there is no validation of the size of the expanded archive entry </li>
+  <li> there is no validation of the ratio between the compressed and uncompressed archive entry </li>
+</ul>
+<p>You are at risk if you answered yes to any of those questions.</p>
+<p> </p>
+<h2>Recommended Secure Coding Practices</h2>
+<p>Validate the full path of the extracted file against the full path of the directory where files are expanded.</p>
+<ul>
+  <li> the canonical path of the expanded file must start with the canonical path of the directory where files are extracted. </li>
+  <li> the name of the archive entry must not contain "..", i.e. reference to a parent directory. </li>
+</ul>
+<p>Stop extracting the archive if any of its entries has been tainted with a directory traversal path.</p>
+<p>Define and control the ratio between compressed and uncompress bytes.</p>
+<p>Define and control the maximum allowed expanded file size.</p>
+<p>Count the number of file entries extracted from the archive and abort the extraction if their number is greater than a predefined threshold.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+foreach (ZipArchiveEntry entry in archive.Entries)
+{
+    //  entry.FullName could contain parent directory references ".." and the destinationPath variable could become outside of the desired path
+    string destinationPath = Path.GetFullPath(Path.Combine(path, entry.FullName));
+
+    entry.ExtractToFile(destinationPath); // Sensitive, extracts the entry in a file
+
+    Stream stream;
+    stream = entry.Open(); // Sensitive, the entry is about to be extracted
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A1-Injection">OWASP Top 10 2017 Category A1</a> - Injection </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/409.html">MITRE, CWE-409</a> - Improper Handling of Highly Compressed Data (Data Amplification)
+  </li>
+  <li> <a href="https://wiki.sei.cmu.edu/confluence/display/java/IDS04-J.+Safely+extract+files+from+ZipInputStream">CERT, IDS04-J.</a> - Safely
+  extract files from ZipInputStream </li>
+  <li> Snyk Research Team: <a href="https://snyk.io/research/zip-slip-vulnerability">Zip Slip Vulnerability</a> </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a1</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>10min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S4834</key>
+    <name>Controlling permissions is security-sensitive</name>
+    <description><![CDATA[<p>Controlling permissions is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-12999">CVE-2018-12999</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-10285">CVE-2018-10285</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-7455">CVE-2017-7455</a> </li>
+</ul>
+<p>Attackers can only damage what they have access to. Thus limiting their access is a good way to prevent them from wreaking havoc, but it has to be
+done properly.</p>
+<p>This rule flags code that controls the access to resources and actions or configures this access. The goal is to guide security code reviews.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> at least one accessed action or resource is security-sensitive. </li>
+  <li> there is no access control in place or it does not cover all sensitive actions and resources. </li>
+  <li> users have permissions they don't need. </li>
+  <li> the access control is based on a user input or on some other unsafe data. </li>
+  <li> permissions are difficult to remove or take a long time to be updated. </li>
+</ul>
+<p>You are at risk if you answered yes to the first question and any of the following ones.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p>The first step is to restrict all sensitive actions to authenticated users.</p>
+<p>Each user should have the lowest privileges possible. The access control granularity should match the sensitivity of each resource or action. The
+more sensitive it is, the less people should have access to it. </p>
+<p>Do not base the access control on a user input or on a value which might have been tampered with. For example, the developer should not read a
+user's permissions from an HTTP cookie as it can be modified client-side.</p>
+<p>Check that the access to each action and resource is properly restricted.</p>
+<p>Enable administrators to swiftly remove permissions when necessary. This enables them to reduce the time an attacker can have access to your
+systems when a breach occurs.</p>
+<p>Log and monitor refused access requests as they can reveal an attack.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System.Threading;
+using System.Security.Permissions;
+using System.Security.Principal;
+using System.IdentityModel.Tokens;
+
+class SecurityPrincipalDemo
+{
+    class MyIdentity : IIdentity // Sensitive, custom IIdentity implementations should be reviewed
+    {
+        // ...
+    }
+
+    class MyPrincipal : IPrincipal // Sensitive, custom IPrincipal implementations should be reviewed
+    {
+        // ...
+    }
+    [System.Security.Permissions.PrincipalPermission(SecurityAction.Demand, Role = "Administrators")] // Sensitive. The access restrictions enforced by this attribute should be reviewed.
+    static void CheckAdministrator()
+    {
+        WindowsIdentity MyIdentity = WindowsIdentity.GetCurrent(); // Sensitive
+        HttpContext.User = ...; // Sensitive: review all reference (set and get) to System.Web HttpContext.User
+        AppDomain domain = AppDomain.CurrentDomain;
+        domain.SetPrincipalPolicy(PrincipalPolicy.WindowsPrincipal); // Sensitive
+        MyIdentity identity = new MyIdentity(); // Sensitive
+        MyPrincipal MyPrincipal = new MyPrincipal(MyIdentity); // Sensitive
+        Thread.CurrentPrincipal = MyPrincipal; // Sensitive
+        domain.SetThreadPrincipal(MyPrincipal); // Sensitive
+
+        // All instantiation of PrincipalPermission should be reviewed.
+        PrincipalPermission principalPerm = new PrincipalPermission(null, "Administrators"); // Sensitive
+        principalPerm.Demand();
+
+        SecurityTokenHandler handler = ...;
+        // Sensitive: this creates an identity.
+        ReadOnlyCollection&lt;ClaimsIdentity&gt; identities = handler.ValidateToken(…);
+    }
+
+     // Sensitive: review how this function uses the identity and principal.
+    void modifyPrincipal(MyIdentity identity, MyPrincipal principal)
+    {
+        // ...
+    }
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A5-Broken_Access_Control">OWASP Top 10 2017 Category A5</a> - Boken Access Control </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat3">SANS Top 25</a> - Porous Defenses </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a5</tag>
+  </rule>
+  <rule>
+    <key>S4829</key>
+    <name>Reading the Standard Input is security-sensitive</name>
+    <description><![CDATA[<p>Reading Standard Input is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2005-2337">CVE-2005-2337</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-11449">CVE-2017-11449</a> </li>
+</ul>
+<p>It is common for attackers to craft inputs enabling them to exploit software vulnerabilities. Thus any data read from the standard input (stdin)
+can be dangerous and should be validated.</p>
+<p>This rule flags code that reads from the standard input.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> data read from the standard input is not sanitized before being used. </li>
+</ul>
+<p>You are at risk if you answered yes to this question.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p><a href="https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet">Sanitize</a> all data read from the standard input before using it.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System;
+public class C
+{
+    public void Main()
+    {
+        Console.In; // Sensitive
+        var code = Console.Read(); // Sensitive
+        var keyInfo = Console.ReadKey(...); // Sensitive
+        var text = Console.ReadLine(); // Sensitive
+        Console.OpenStandardInput(...); // Sensitive
+    }
+}
+</pre>
+<h2>Exceptions</h2>
+<p>This rule does not raise issues when the return value of the <code>Console.Read</code> <code>Console.ReadKey</code> or
+<code>Console.ReadLine</code> methods is ignored.</p>
+<pre>
+using System;
+public class C
+{
+    public void Main()
+    {
+        Console.ReadKey(...); // Return value is ignored
+        Console.ReadLine(); // Return value is ignored
+    }
+}
+</pre>
+<h2>See:</h2>
+<ul>
+  <li> <a href="https://cwe.mitre.org/data/definitions/20.html">MITRE, CWE-20</a> - Improper Input Validation </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+  </rule>
+  <rule>
+    <key>S4823</key>
+    <name>Using command line arguments is security-sensitive</name>
+    <description><![CDATA[<p>Using command line arguments is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-7281">CVE-2018-7281</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-12326">CVE-2018-12326</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2011-3198">CVE-2011-3198</a> </li>
+</ul>
+<p>Command line arguments can be dangerous just like any other user input. They should never be used without being first validated and sanitized.</p>
+<p>Remember also that any user can retrieve the list of processes running on a system, which makes the arguments provided to them visible. Thus
+passing sensitive information via command line arguments should be considered as insecure.</p>
+<p>This rule raises an issue when on every program entry points (<code>main</code> methods) when command line arguments are used. The goal is to guide
+security code reviews.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> any of the command line arguments are used without being sanitized first. </li>
+  <li> your application accepts sensitive information via command line arguments. </li>
+</ul>
+<p>If you answered yes to any of these questions you are at risk.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p><a href="https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet">Sanitize</a> all command line arguments before using them.</p>
+<p>Any user or application can list running processes and see the command line arguments they were started with. There are safer ways of providing
+sensitive information to an application than exposing them in the command line. It is common to write them on the process' standard input, or give the
+path to a file containing the information.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+namespace MyNamespace
+{
+    class Program
+    {
+        static void Main(string[] args) // Sensitive if there is a reference to "args" in the method.
+        {
+            string myarg = args[0];
+            // ...
+        }
+    }
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A1-Injection">OWASP Top 10 2017 Category A1</a> - Injection </li>
+  <li> <a href="https://cwe.mitre.org/data/definitions/88.html">MITRE, CWE-88</a> - Argument Injection or Modification </li>
+  <li> <a href="https://cwe.mitre.org/data/definitions/214.html">MITRE, CWE-214</a> - Information Exposure Through Process Environment </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat1">SANS Top 25</a> - Insecure Interaction Between Components </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a1</tag>
+    <tag>sans-top25-insecure</tag>
+  </rule>
+  <rule>
+    <key>S4818</key>
+    <name>Using Sockets is security-sensitive</name>
+    <description><![CDATA[<p>Using sockets is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2011-1785">CVE-2011-178</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-5645">CVE-2017-5645</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-6597">CVE-2018-6597</a> </li>
+</ul>
+<p>Sockets are vulnerable in multiple ways:</p>
+<ul>
+  <li> They enable a software to interact with the outside world. As this world is full of attackers it is necessary to check that they cannot receive
+  sensitive information or inject dangerous input. </li>
+  <li> The number of sockets is limited and can be exhausted. Which makes the application unresponsive to users who need additional sockets. </li>
+</ul>
+<p>This rules flags code that creates sockets. It matches only the direct use of sockets, not use through frameworks or high-level APIs such as the
+use of http connections.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> sockets are created without any limit every time a user performs an action. </li>
+  <li> input received from sockets is used without being sanitized. </li>
+  <li> sensitive data is sent via sockets without being encrypted. </li>
+</ul>
+<p>You are at risk if you answered yes to any of these questions.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> In many cases there is no need to open a socket yourself. Use instead libraries and existing protocols. </li>
+  <li> Encrypt all data sent if it is sensitive. Usually it is better to encrypt it even if the data is not sensitive as it might change later. </li>
+  <li> <a href="https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet">Sanitize</a> any input read from the socket. </li>
+  <li> Limit the number of sockets a given user can create. Close the sockets as soon as possible. </li>
+</ul>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System.Net.Sockets;
+
+class TestSocket
+{
+    public static void Run()
+    {
+        // Sensitive
+        Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+        // TcpClient and UdpClient simply abstract the details of creating a Socket
+        TcpClient client = new TcpClient("example.com", 80); // Sensitive
+        UdpClient listener = new UdpClient(80); // Sensitive
+    }
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/20">MITRE, CWE-20</a> - Improper Input Validation </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/400">MITRE, CWE-400</a> - Uncontrolled Resource Consumption ('Resource Exhaustion') </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/200">MITRE, CWE-200</a> - Information Exposure </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat2">SANS Top 25</a> - Risky Resource Management </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat3">SANS Top 25</a> - Porous Defenses </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>sans-top25-risky</tag>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a3</tag>
+  </rule>
+  <rule>
+    <key>S4792</key>
+    <name>Configuring loggers is security-sensitive</name>
+    <description><![CDATA[<p>Configuring loggers is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0285">CVE-2018-0285</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-1127">CVE-2000-1127</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-15113">CVE-2017-15113</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-5742">CVE-2015-5742</a> </li>
+</ul>
+<p>Logs are useful before, during and after a security incident.</p>
+<ul>
+  <li> Attackers will most of the time start their nefarious work by probing the system for vulnerabilities. Monitoring this activity and stopping it
+  is the first step to prevent an attack from ever happening. </li>
+  <li> In case of a successful attack, logs should contain enough information to understand what damage an attacker may have inflicted. </li>
+</ul>
+<p>Logs are also a target for attackers because they might contain sensitive information. Configuring loggers has an impact on the type of information
+logged and how they are logged.</p>
+<p>This rule flags for review code that initiates loggers configuration. The goal is to guide security code reviews.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> unauthorized users might have access to the logs, either because they are stored in an insecure location or because the application gives
+  access to them. </li>
+  <li> the logs contain sensitive information on a production server. This can happen when the logger is in debug mode. </li>
+  <li> the log can grow without limit. This can happen when additional information is written into logs every time a user performs an action and the
+  user can perform the action as many times as he/she wants. </li>
+  <li> the logs do not contain enough information to understand the damage an attacker might have inflicted. The loggers mode (info, warn, error)
+  might filter out important information. They might not print contextual information like the precise time of events or the server hostname. </li>
+  <li> the logs are only stored locally instead of being backuped or replicated. </li>
+</ul>
+<p>You are at risk if you answered yes to any of those questions.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> Check that your production deployment doesn't have its loggers in "debug" mode as it might write sensitive information in logs. </li>
+  <li> Production logs should be stored in a secure location which is only accessible to system administrators. </li>
+  <li> Configure the loggers to display all warnings, info and error messages. Write relevant information such as the precise time of events and the
+  hostname. </li>
+  <li> Choose log format which is easy to parse and process automatically. It is important to process logs rapidly in case of an attack so that the
+  impact is known and limited. </li>
+  <li> Check that the permissions of the log files are correct. If you index the logs in some other service, make sure that the transfer and the
+  service are secure too. </li>
+  <li> Add limits to the size of the logs and make sure that no user can fill the disk with logs. This can happen even when the user does not control
+  the logged information. An attacker could just repeat a logged action many times. </li>
+</ul>
+<p>Remember that configuring loggers properly doesn't make them bullet-proof. Here is a list of recommendations explaining on how to use your
+logs:</p>
+<ul>
+  <li> Don't log any sensitive information. This obviously includes passwords and credit card numbers but also any personal information such as user
+  names, locations, etc... Usually any information which is protected by law is good candidate for removal. </li>
+  <li> Sanitize all user inputs before writing them in the logs. This includes checking its size, content, encoding, syntax, etc... As for any user
+  input, validate using whitelists whenever possible. Enabling users to write what they want in your logs can have many impacts. It could for example
+  use all your storage space or compromise your log indexing service. </li>
+  <li> Log enough information to monitor suspicious activities and evaluate the impact an attacker might have on your systems. Register events such as
+  failed logins, successful logins, server side input validation failures, access denials and any important transaction. </li>
+  <li> Monitor the logs for any suspicious activity. </li>
+</ul>
+<h2>Sensitive Code Example</h2>
+<p><strong>.Net Core</strong>: configure programmatically</p>
+<pre>
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore;
+
+namespace MvcApp
+{
+    public class ProgramLogging
+    {
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =&gt;
+            WebHost.CreateDefaultBuilder(args)
+                .ConfigureLogging((hostingContext, logging) =&gt; // Sensitive
+                {
+                    // ...
+                })
+                .UseStartup&lt;StartupLogging&gt;();
+    }
+
+    public class StartupLogging
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddLogging(logging =&gt; // Sensitive
+            {
+                // ...
+            });
+        }
+
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        {
+            IConfiguration config = null;
+            LogLevel level = LogLevel.Critical;
+            Boolean includeScopes = false;
+            Func&lt;string,Microsoft.Extensions.Logging.LogLevel,bool&gt; filter = null;
+            Microsoft.Extensions.Logging.Console.IConsoleLoggerSettings consoleSettings = null;
+            Microsoft.Extensions.Logging.AzureAppServices.AzureAppServicesDiagnosticsSettings azureSettings = null;
+            Microsoft.Extensions.Logging.EventLog.EventLogSettings eventLogSettings = null;
+
+            // An issue will be raised for each call to an ILoggerFactory extension methods adding loggers.
+            loggerFactory.AddAzureWebAppDiagnostics(); // Sensitive
+            loggerFactory.AddAzureWebAppDiagnostics(azureSettings); // Sensitive
+            loggerFactory.AddConsole(); // Sensitive
+            loggerFactory.AddConsole(level); // Sensitive
+            loggerFactory.AddConsole(level, includeScopes); // Sensitive
+            loggerFactory.AddConsole(filter); // Sensitive
+            loggerFactory.AddConsole(filter, includeScopes); // Sensitive
+            loggerFactory.AddConsole(config); // Sensitive
+            loggerFactory.AddConsole(consoleSettings); // Sensitive
+            loggerFactory.AddDebug(); // Sensitive
+            loggerFactory.AddDebug(level); // Sensitive
+            loggerFactory.AddDebug(filter); // Sensitive
+            loggerFactory.AddEventLog(); // Sensitive
+            loggerFactory.AddEventLog(eventLogSettings); // Sensitive
+            loggerFactory.AddEventLog(level); // Sensitive
+            loggerFactory.AddEventSourceLogger(); // Sensitive
+
+            IEnumerable&lt;ILoggerProvider&gt; providers = null;
+            LoggerFilterOptions filterOptions1 = null;
+            IOptionsMonitor&lt;LoggerFilterOptions&gt; filterOptions2 = null;
+
+            LoggerFactory factory = new LoggerFactory(); // Sensitive
+            new LoggerFactory(providers); // Sensitive
+            new LoggerFactory(providers, filterOptions1); // Sensitive
+            new LoggerFactory(providers, filterOptions2); // Sensitive
+        }
+    }
+}
+</pre>
+<p><strong>Log4Net</strong></p>
+<pre>
+using System;
+using System.IO;
+using System.Xml;
+using log4net.Appender;
+using log4net.Config;
+using log4net.Repository;
+
+namespace Logging
+{
+    class Log4netLogging
+    {
+        void Foo(ILoggerRepository repository, XmlElement element, FileInfo configFile, Uri configUri, Stream configStream,
+        IAppender appender, params IAppender[] appenders) {
+            log4net.Config.XmlConfigurator.Configure(repository); // Sensitive
+            log4net.Config.XmlConfigurator.Configure(repository, element); // Sensitive
+            log4net.Config.XmlConfigurator.Configure(repository, configFile); // Sensitive
+            log4net.Config.XmlConfigurator.Configure(repository, configUri); // Sensitive
+            log4net.Config.XmlConfigurator.Configure(repository, configStream); // Sensitive
+            log4net.Config.XmlConfigurator.ConfigureAndWatch(repository, configFile); // Sensitive
+
+            log4net.Config.DOMConfigurator.Configure(); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(repository); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(element); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(repository, element); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(configFile); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(repository, configFile); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(configStream); // Sensitive
+            log4net.Config.DOMConfigurator.Configure(repository, configStream); // Sensitive
+            log4net.Config.DOMConfigurator.ConfigureAndWatch(configFile); // Sensitive
+            log4net.Config.DOMConfigurator.ConfigureAndWatch(repository, configFile); // Sensitive
+
+            log4net.Config.BasicConfigurator.Configure(); // Sensitive
+            log4net.Config.BasicConfigurator.Configure(appender); // Sensitive
+            log4net.Config.BasicConfigurator.Configure(appenders); // Sensitive
+            log4net.Config.BasicConfigurator.Configure(repository); // Sensitive
+            log4net.Config.BasicConfigurator.Configure(repository, appender); // Sensitive
+            log4net.Config.BasicConfigurator.Configure(repository, appenders); // Sensitive
+        }
+    }
+}
+</pre>
+<p><strong>NLog</strong>: configure programmatically</p>
+<pre>
+namespace Logging
+{
+    class NLogLogging
+    {
+        void Foo(NLog.Config.LoggingConfiguration config) {
+            NLog.LogManager.Configuration = config; // Sensitive, this changes the logging configuration.
+        }
+    }
+}
+</pre>
+<p><strong>Serilog</strong></p>
+<pre>
+namespace Logging
+{
+    class SerilogLogging
+    {
+        void Foo() {
+            new Serilog.LoggerConfiguration(); // Sensitive
+        }
+    }
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A10-Insufficient_Logging%26Monitoring">OWASP Top 10 2017 Category A10</a> - Insufficient
+  Logging &amp; Monitoring </li>
+  <li> <a href="https://cwe.mitre.org/data/definitions/532.html">MITRE, CWE-532</a> - Information Exposure Through Log Files </li>
+  <li> <a href="https://cwe.mitre.org/data/definitions/117.html">MITRE, CWE-117</a> - Improper Output Neutralization for Logs </li>
+  <li> <a href="https://cwe.mitre.org/data/definitions/778.html">MITRE, CWE-778</a> - Insufficient Logging </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat3">SANS Top 25</a> - Porous Defenses </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a10</tag>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a3</tag>
+  </rule>
+  <rule>
+    <key>S4790</key>
+    <name>Hashing data is security-sensitive</name>
+    <description><![CDATA[<p>Hashing data is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-9233">CVE-2018-9233</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2013-5097">CVE-2013-5097</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2007-1051">CVE-2007-1051</a> </li>
+</ul>
+<p>Cryptographic hash functions are used to uniquely identify information without storing their original form. When not done properly, an attacker can
+steal the original information by guessing it (ex: with a <a href="https://en.wikipedia.org/wiki/Rainbow_table">rainbow table</a>), or replace the
+original data with another one having the same hash.</p>
+<p>This rule flags code that initiates hashing.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> the hashed value is used in a security context. </li>
+  <li> the hashing algorithm you are using is known to have vulnerabilities. </li>
+  <li> <a href="https://en.wikipedia.org/wiki/Salt_(cryptography)">salts</a> are not automatically generated and applied by the hashing function.
+  </li>
+  <li> any generated salts are cryptographically weak or not credential-specific. </li>
+</ul>
+<p>You are at risk if you answered yes to the first question and any of the following ones.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> for security related purposes, use only hashing algorithms which are <a
+  href="https://www.owasp.org/index.php/Password_Storage_Cheat_Sheet">currently known to be strong</a>. Avoid using algorithms like MD5 and SHA1
+  completely in security contexts. </li>
+  <li> do not define your own hashing- or salt algorithms as they will most probably have flaws. </li>
+  <li> do not use algorithms that compute too quickly, like SHA256, as it must remain beyond modern hardware capabilities to perform brute force and
+  dictionary based attacks. </li>
+  <li> use a hashing algorithm that generate its own salts as part of the hashing. If you generate your own salts, make sure that a cryptographically
+  strong salt algorithm is used, that generated salts are credential-specific, and finally, that the salt is applied correctly before the hashing.
+  </li>
+  <li> save both the salt and the hashed value in the relevant database record; during future validation operations, the salt and hash can then be
+  retrieved from the database. The hash is recalculated with the stored salt and the value being validated, and the result compared to the stored
+  hash. </li>
+  <li> the strength of hashing algorithms often decreases over time as hardware capabilities increase. Check regularly that the algorithms you are
+  using are still considered secure. If needed, rehash your data using a stronger algorithm. </li>
+</ul>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System.Security.Cryptography;
+
+void ComputeHash()
+{
+    // Review all instantiations of classes that inherit from HashAlgorithm, for example:
+    HashAlgorithm hashAlgo = HashAlgorithm.Create(); // Sensitive
+    HashAlgorithm hashAlgo2 = HashAlgorithm.Create("SHA1"); // Sensitive
+    SHA1 sha = new SHA1CryptoServiceProvider(); // Sensitive
+    MD5 md5 = new MD5CryptoServiceProvider(); // Sensitive
+    // ...
+}
+
+class MyHashAlgorithm : HashAlgorithm // Sensitive
+{
+    // ...
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A6-Security_Misconfiguration">OWASP Top 10 2017 Category A6</a> - Security
+  Misconfiguration </li>
+  <li> <a href="https://cwe.mitre.org/data/definitions/916.html">MITRE, CWE-916</a> - Use of Password Hash With Insufficient Computational Effort
+  </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/759.html">MITRE, CWE-759</a> - Use of a One-Way Hash without a Salt </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/760.html">MITRE, CWE-760</a> - Use of a One-Way Hash with a Predictable Salt </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat3">SANS Top 25</a> - Porous Defenses </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>spring</tag>
+    <tag>owasp-a6</tag>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a3</tag>
+  </rule>
+  <rule>
+    <key>S4787</key>
+    <name>Encrypting data is security-sensitive</name>
+    <description><![CDATA[<p>Encrypting data is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-7902">CVE-2017-7902</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2006-1378">CVE-2006-1378</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2003-1376">CVE-2003-1376</a> </li>
+</ul>
+<p>Proper encryption requires both the encryption algorithm and the key to be strong. Obviously the private key needs to remain secret and be renewed
+regularly. However these are not the only means to defeat or weaken an encryption.</p>
+<p> </p>
+<p>This rule flags function calls that initiate encryption/decryption. The goal is to guide security code reviews.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> the private key might not be random, strong enough or the same key is reused for a long long time. </li>
+  <li> the private key might be compromised. It can happen when it is stored in an unsafe place or when it was transferred in an unsafe manner. </li>
+  <li> the key exchange is made without properly authenticating the receiver. </li>
+  <li> the encryption algorithm is not strong enough for the level of protection required. Note that encryption algorithms strength decreases as time
+  passes. </li>
+  <li> the chosen encryption library is deemed unsafe. </li>
+  <li> a nonce is used, and the same value is reused multiple times, or the nonce is not random. </li>
+  <li> the RSA algorithm is used, and it does not incorporate an Optimal Asymmetric Encryption Padding (OAEP), which might weaken the encryption.
+  </li>
+  <li> the CBC (Cypher Block Chaining) algorithm is used for encryption, and it's IV (Initialization Vector) is not generated using a secure random
+  algorithm, or it is reused. </li>
+  <li> the Advanced Encryption Standard (AES) encryption algorithm is used with an unsecure mode. See the recommended practices for more information.
+  </li>
+</ul>
+<p>You are at risk if you answered yes to any of those questions.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> Generate encryption keys using secure random algorithms. </li>
+  <li> When generating cryptographic keys (or key pairs), it is important to use a key length that provides enough entropy against brute-force
+  attacks. For the Blowfish algorithm the key should be at least 128 bits long, while for the RSA algorithm it should be at least 2048 bits long.
+  </li>
+  <li> Regenerate the keys regularly. </li>
+  <li> Always store the keys in a safe location and transfer them only over safe channels. </li>
+  <li> If there is an exchange of cryptographic keys, check first the identity of the receiver. </li>
+  <li> Only use strong encryption algorithms. Check regularly that the algorithm is still deemed secure. It is also imperative that they are
+  implemented correctly. Use only encryption libraries which are deemed secure. Do not define your own encryption algorithms as they will most
+  probably have flaws. </li>
+  <li> When a nonce is used, generate it randomly every time. </li>
+  <li> When using the RSA algorithm, incorporate an Optimal Asymmetric Encryption Padding (OAEP). </li>
+  <li> When CBC is used for encryption, the IV must be random and unpredictable. Otherwise it exposes the encrypted value to crypto-analysis attacks
+  like "Chosen-Plaintext Attacks". Thus a secure random algorithm should be used. An IV value should be associated to one and only one encryption
+  cycle, because the IV's purpose is to ensure that the same plaintext encrypted twice will yield two different ciphertexts. </li>
+  <li> The Advanced Encryption Standard (AES) encryption algorithm can be used with various modes. Galois/Counter Mode (GCM) with no padding should be
+  preferred to the following combinations which are not secured:
+    <ul>
+      <li> Electronic Codebook (ECB) mode: Under a given key, any given plaintext block always gets encrypted to the same ciphertext block. Thus, it
+      does not hide data patterns well. In some senses, it doesn't provide serious message confidentiality, and it is not recommended for use in
+      cryptographic protocols at all. </li>
+      <li> Cipher Block Chaining (CBC) with PKCS#5 padding (or PKCS#7) is susceptible to padding oracle attacks. </li>
+    </ul> </li>
+</ul>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System;
+using System.Security.Cryptography;
+
+namespace MyNamespace
+{
+    public class MyClass
+    {
+        public void Main()
+        {
+            Byte[] data = {1,1,1};
+
+            RSA myRSA = RSA.Create();
+            RSAEncryptionPadding padding = RSAEncryptionPadding.CreateOaep(HashAlgorithmName.SHA1);
+            // Review all base RSA class' Encrypt/Decrypt calls
+            myRSA.Encrypt(data, padding); // Sensitive
+            myRSA.EncryptValue(data); // Sensitive
+            myRSA.Decrypt(data, padding); // Sensitive
+            myRSA.DecryptValue(data); // Sensitive
+
+            RSACryptoServiceProvider myRSAC = new RSACryptoServiceProvider();
+            // Review the use of any TryEncrypt/TryDecrypt and specific Encrypt/Decrypt of RSA subclasses.
+            myRSAC.Encrypt(data, false); // Sensitive
+            myRSAC.Decrypt(data, false); // Sensitive
+            int written;
+            myRSAC.TryEncrypt(data, Span&lt;byte&gt;.Empty, padding, out written); // Sensitive
+            myRSAC.TryDecrypt(data, Span&lt;byte&gt;.Empty, padding, out written); // Sensitive
+
+            byte[] rgbKey = {1,2,3};
+            byte[] rgbIV = {4,5,6};
+            SymmetricAlgorithm rijn = SymmetricAlgorithm.Create();
+            // Review the creation of Encryptors from any SymmetricAlgorithm instance.
+            rijn.CreateEncryptor(); // Sensitive
+            rijn.CreateEncryptor(rgbKey, rgbIV); // Sensitive
+            rijn.CreateDecryptor(); // Sensitive
+            rijn.CreateDecryptor(rgbKey, rgbIV); // Sensitive
+        }
+
+        public class MyCrypto : System.Security.Cryptography.AsymmetricAlgorithm // Sensitive
+        {
+            // ...
+        }
+
+        public class MyCrypto2 : System.Security.Cryptography.SymmetricAlgorithm // Sensitive
+        {
+            // ...
+        }
+    }
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A6-Security_Misconfiguration">OWASP Top 10 2017 Category A6</a> - Security
+  Misconfiguration </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/321.html">MITRE, CWE-321</a> - Use of Hard-coded Cryptographic Key </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/322.html">MITRE, CWE-322</a> - Key Exchange without Entity Authentication </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/323.html">MITRE, CWE-323</a> - Reusing a Nonce, Key Pair in Encryption </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/324.html">MITRE, CWE-324</a> - Use of a Key Past its Expiration Date </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/325.html">MITRE, CWE-325</a> - Missing Required Cryptographic Step </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/326.html">MITRE, CWE-326</a> - Inadequate Encryption Strength </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/327.html">MITRE, CWE-327</a> - Use of a Broken or Risky Cryptographic Algorithm </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/522.html">MITRE, CWE-522</a> - Insufficiently Protected Credentials </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat3">SANS Top 25</a> - Porous Defenses </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a6</tag>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a3</tag>
+  </rule>
+  <rule>
+    <key>S4784</key>
+    <name>Using regular expressions is security-sensitive</name>
+    <description><![CDATA[<p>Using regular expressions is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-16021">CVE-2017-16021</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-13863">CVE-2018-13863</a> </li>
+</ul>
+<p>Evaluating regular expressions against input strings is potentially an extremely CPU-intensive task. Specially crafted regular expressions such as
+<code>(a+)+s</code> will take several seconds to evaluate the input string <code>aaaaaaaaaaaaaaaaaaaaaaaaaaaaabs</code>. The problem is that with
+every additional <code>a</code> character added to the input, the time required to evaluate the regex doubles. However, the equivalent regular
+expression, <code>a+s</code> (without grouping) is efficiently evaluated in milliseconds and scales linearly with the input size.</p>
+<p>Evaluating such regular expressions opens the door to <a
+href="https://www.owasp.org/index.php/Regular_expression_Denial_of_Service_-_ReDoS">Regular expression Denial of Service (ReDoS)</a> attacks. In the
+context of a web application, attackers can force the web server to spend all of its resources evaluating regular expressions thereby making the
+service inaccessible to genuine users.</p>
+<p>This rule flags any execution of a hardcoded regular expression which has at least 3 characters and at least two instances of any of the following
+characters: <code>*+{</code>.</p>
+<p>Example: <code>(a+)*</code></p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> the executed regular expression is sensitive and a user can provide a string which will be analyzed by this regular expression. </li>
+  <li> your regular expression engine performance decrease with specially crafted inputs and regular expressions. </li>
+</ul>
+<p>You may be at risk if you answered yes to any of those questions.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p>Check whether your regular expression engine (the algorithm executing your regular expression) has any known vulnerabilities. Search for
+vulnerability reports mentioning the one engine you're are using.</p>
+<p>If the regular expression is vulnerable to ReDos attacks, mitigate the risk by using a "match timeout" to limit the time spent running the regular
+expression.</p>
+<p>Remember also that a ReDos attack is possible if a user-provided regular expression is executed. This rule won't detect this kind of injection.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
+using System.Web;
+
+namespace N
+{
+    public class RegularExpression
+    {
+        void Foo(RegexOptions options, TimeSpan matchTimeout, string input,
+                 string replacement, MatchEvaluator evaluator)
+        {
+            // All the following instantiations are Sensitive.
+            new System.Text.RegularExpressions.Regex("(a+)+");
+            new System.Text.RegularExpressions.Regex("(a+)+", options);
+            new System.Text.RegularExpressions.Regex("(a+)+", options, matchTimeout);
+
+            // All the following static methods are Sensitive.
+            System.Text.RegularExpressions.Regex.IsMatch(input, "(a+)+");
+            System.Text.RegularExpressions.Regex.IsMatch(input, "(a+)+", options);
+            System.Text.RegularExpressions.Regex.IsMatch(input, "(a+)+", options, matchTimeout);
+
+            System.Text.RegularExpressions.Regex.Match(input, "(a+)+");
+            System.Text.RegularExpressions.Regex.Match(input, "(a+)+", options);
+            System.Text.RegularExpressions.Regex.Match(input, "(a+)+", options, matchTimeout);
+
+            System.Text.RegularExpressions.Regex.Matches(input, "(a+)+");
+            System.Text.RegularExpressions.Regex.Matches(input, "(a+)+", options);
+            System.Text.RegularExpressions.Regex.Matches(input, "(a+)+", options, matchTimeout);
+
+            System.Text.RegularExpressions.Regex.Replace(input, "(a+)+", evaluator);
+            System.Text.RegularExpressions.Regex.Replace(input, "(a+)+", evaluator, options);
+            System.Text.RegularExpressions.Regex.Replace(input, "(a+)+", evaluator, options, matchTimeout);
+            System.Text.RegularExpressions.Regex.Replace(input, "(a+)+", replacement);
+            System.Text.RegularExpressions.Regex.Replace(input, "(a+)+", replacement, options);
+            System.Text.RegularExpressions.Regex.Replace(input, "(a+)+", replacement, options, matchTimeout);
+
+            System.Text.RegularExpressions.Regex.Split(input, "(a+)+");
+            System.Text.RegularExpressions.Regex.Split(input, "(a+)+", options);
+            System.Text.RegularExpressions.Regex.Split(input, "(a+)+", options, matchTimeout);
+        }
+    }
+}
+</pre>
+<h2>Exceptions</h2>
+<p>Some corner-case regular expressions will not raise an issue even though they might be vulnerable. For example: <code>(a|aa)+</code>,
+<code>(a|a?)+</code>.</p>
+<p>It is a good idea to test your regular expression if it has the same pattern on both side of a "<code>|</code>".</p>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A1-Injection">OWASP Top 10 2017 Category A1</a> - Injection </li>
+  <li> <a href="https://www.owasp.org/index.php/Regular_expression_Denial_of_Service_-_ReDoS">MITRE, CWE-624</a> - Executable Regular Expression Error
+  </li>
+  <li> OWASP Regular expression Denial of Service - ReDoS </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a1</tag>
+  </rule>
+  <rule>
+    <key>S4507</key>
+    <name>Delivering code in production with debug features activated is security-sensitive</name>
+    <description><![CDATA[<p>Delivering code in production with debug features activated is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1999007">CVE-2018-1999007</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-5306">CVE-2015-5306</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2013-2006">CVE-2013-2006</a> </li>
+</ul>
+<p>An application's debug features enable developers to find bugs more easily. It often gives access to detailed information on both the system
+running the application and users. Sometime it even enables the execution of custom commands. Thus deploying on production servers an application
+which has debug features activated is extremely dangerous.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> the code or configuration enabling the application debug features is deployed on production servers. </li>
+  <li> the application runs by default with debug features activated. </li>
+</ul>
+<p>You are at risk if you answered yes to any of these questions.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p>Do not enable debug features on production servers.</p>
+<p>The .Net Core framework offers multiple features which help during debug.
+<code>Microsoft.AspNetCore.Builder.IApplicationBuilder.UseDeveloperExceptionPage</code> and
+<code>Microsoft.AspNetCore.Builder.IApplicationBuilder.UseDatabaseErrorPage</code> are two of them. Make sure that those features are disabled in
+production.</p>
+<p> Use <code>if (env.IsDevelopment())</code> to disable debug code.</p>
+<h2>Sensitive Code Example</h2>
+<p>This rule raises issues when the following .Net Core methods are called:
+<code>Microsoft.AspNetCore.Builder.IApplicationBuilder.UseDeveloperExceptionPage</code>,
+<code>Microsoft.AspNetCore.Builder.IApplicationBuilder.UseDatabaseErrorPage</code>. No Issue is raised when those calls are disabled by <code>if
+(env.IsDevelopment())</code>.</p>
+<pre>
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+
+namespace mvcApp
+{
+    public class Startup2
+    {
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                // The following calls are ok because they are disabled in production
+                app.UseDeveloperExceptionPage();
+                app.UseDatabaseErrorPage();
+            }
+            // Those calls are Sensitive because it seems that they will run in production
+            app.UseDeveloperExceptionPage(); // Sensitive
+            app.UseDatabaseErrorPage(); // Sensitive
+        }
+    }
+}
+
+</pre>
+<h2>Exceptions</h2>
+<p>This rule does not analyze configuration files. Make sure that debug mode is not enabled by default in those files.</p>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/489.html">MITRE, CWE-489</a> - Leftover Debug Code </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/215.html">MITRE, CWE-215</a> - Information Exposure Through Debug Information </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a3</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>1min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S3011</key>
+    <name>Changing or bypassing accessibility is security-sensitive</name>
+    <description><![CDATA[<p>Changing or bypassing accessibility is security-sensitive. For example, it has led in the past to the following vulnerability:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2012-4681">CVE-2012-4681</a> </li>
+</ul>
+<p><code>private</code> methods were made <code>private</code> for a reason, and the same is true of every other visibility level. Altering or
+bypassing the accessibility of classes, methods, or fields violates the encapsulation principle and could introduce security holes.</p>
+<p>This rule raises an issue when reflection is used to change the visibility of a class, method or field, and when it is used to directly update a
+field value.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> there is a good reason to override the existing accessibility level of the method/field. This is very rarely the case. Accessing hidden fields
+  and methods will make your code unstable as they are not part of the public API and may change in future versions. </li>
+  <li> this method is called by untrusted code. <strong>*</strong> </li>
+  <li> it is possible to modify or bypass the accessibility of sensitive methods or fields using this code. <strong>*</strong> </li>
+</ul>
+<p><strong>*</strong> You are at risk if you answered yes to those questions.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p>Don't change or bypass the accessibility of any method or field if possible.</p>
+<p>If untrusted code can execute this method, make sure that it cannot decide which method or field's accessibility can be modified or bypassed.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+using System.Reflection;
+
+Type dynClass = Type.GetType("MyInternalClass");
+// Sensitive. Using BindingFlags.NonPublic will return non-public members
+BindingFlags bindingAttr = BindingFlags.NonPublic | BindingFlags.Static;
+MethodInfo dynMethod = dynClass.GetMethod("mymethod", bindingAttr);
+object result = dynMethod.Invoke(dynClass, null);
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="https://www.securecoding.cert.org/confluence/x/3YEVAQ">CERT, SEC05-J.</a> - Do not use reflection to increase accessibility of
+  classes, methods, or fields </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>owasp-a3</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>30min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S2255</key>
+    <name>Writing cookies is security-sensitive</name>
+    <description><![CDATA[<p>Using cookies is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-11639">CVE-2018-11639</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2016-6537">CVE-2016-6537</a> </li>
+</ul>
+<p>Attackers can use widely-available tools to read cookies, sensitive information written by the server will be exposed.</p>
+<p>This rule flags code that writes cookies.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> sensitive information is stored inside the cookie. </li>
+</ul>
+<p>You are at risk if you answered yes to this question.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<p>Cookies should only be used to manage the user session. The best practice is to keep all user-related information server-side and link them to the
+user session, never sending them to the client. In a very few corner cases, cookies can be used for non-sensitive information that need to live longer
+than the user session.</p>
+<p>Do not try to encode sensitive information in a non human-readable format before writing them in a cookie. The encoding can be reverted and the
+original information will be exposed.</p>
+<p>Using cookies only for session IDs doesn't make them secure. Follow <a
+href="https://www.owasp.org/index.php/Session_Management_Cheat_Sheet#Cookies">OWASP best practices</a> when you configure your cookies.</p>
+<p>As a side note, every information read from a cookie should be <a
+href="https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet">Sanitized</a>.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+// === .Net Framework ===
+
+HttpCookie myCookie = new HttpCookie("UserSettings");
+myCookie["CreditCardNumber"] = "1234 1234 1234 1234"; // Sensitive; sensitive data stored
+myCookie.Values["password"] = "5678"; // Sensitive
+myCookie.Value = "mysecret"; // Sensitive
+...
+Response.Cookies.Add(myCookie);
+
+
+// === .Net Core ===
+
+Response.Headers.Add("Set-Cookie", ...); // Sensitive
+Response.Cookies.Append("mykey", "myValue"); // Sensitive
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/312.html">MITRE, CWE-312</a> - Cleartext Storage of Sensitive Information </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/315.html">MITRE, CWE-315</a> - Cleartext Storage of Sensitive Information in a Cookie </li>
+  <li> <a href="https://wiki.sei.cmu.edu/confluence/display/java/FIO52-J.+Do+not+store+unencrypted+sensitive+information+on+the+client+side">CERT,
+  FIO52-J.</a> - Do not store unencrypted sensitive information on the client side </li>
+  <li> Derived from FindSecBugs rule <a href="https://find-sec-bugs.github.io/bugs.htm#COOKIE_USAGE">COOKIE_USAGE</a> </li>
+</ul>
+
+]]></description>
+    <severity>MINOR</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a3</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>5min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S2245</key>
+    <name>Using pseudorandom number generators (PRNGs) is security-sensitive</name>
+    <description><![CDATA[<p>Using pseudorandom number generators (PRNGs) is security-sensitive. For example, it has led in the past to the following vulnerabilities:</p>
+<p> * <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2013-6386">CVE-2013-6386</a></p>
+<p> * <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2006-3419">CVE-2006-3419</a></p>
+<p> * <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2008-4102">CVE-2008-4102</a></p>
+<p>When software generates predictable values in a context requiring unpredictability, it may be possible for an attacker to guess the next value that
+will be generated, and use this guess to impersonate another user or access sensitive information.</p>
+<p>As the <code>System.Random</code> class relies on a pseudorandom number generator, it should not be used for security-critical applications or for
+protecting sensitive data. In such context, the <code>System.Cryptography.RandomNumberGenerator</code> class which relies on a cryptographically
+strong random number generator (RNG) should be used in place.</p>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> the code using the generated value requires it to be unpredictable. It is the case for all encryption mechanisms or when a secret value, such
+  as a password, is hashed. </li>
+  <li> the function you use generates a value which can be predicted (pseudo-random). </li>
+  <li> the generated value is used multiple times. </li>
+  <li> an attacker can access the generated value. </li>
+</ul>
+<p>You are at risk if you answered yes to the first question and any of the following ones.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> Only use random number generators which are <a
+  href="https://www.owasp.org/index.php/Cryptographic_Storage_Cheat_Sheet#Rule_-_Use_strong_random_numbers">recommended by OWASP</a> or any other
+  trusted organization. </li>
+  <li> Use the generated random values only once. </li>
+  <li> You should not expose the generated random value. If you have to store it, make sure that the database or file is secure. </li>
+</ul>
+<h2>Sensitive Code Example</h2>
+<pre>
+var random = new Random(); // Sensitive use of Random
+byte[] data = new byte[16];
+random.NextBytes(data);
+return BitConverter.ToString(data); // Check if this value is used for hashing or encryption
+</pre>
+<h2>Compliant Solution</h2>
+<pre>
+using System.Security.Cryptography;
+...
+var randomGenerator = RandomNumberGenerator.Create(); // Compliant for security-sensitive use cases
+byte[] data = new byte[16];
+randomGenerator.GetBytes(data);
+return BitConverter.ToString(data);
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/338.html">MITRE, CWE-338</a> - Use of Cryptographically Weak Pseudo-Random Number Generator
+  (PRNG) </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/330.html">MITRE, CWE-330</a> - Use of Insufficiently Random Values </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/326.html">MITRE, CWE-326</a> - Inadequate Encryption Strength </li>
+  <li> <a href="https://www.securecoding.cert.org/confluence/x/mAFqAQ">CERT, MSC02-J.</a> - Generate strong random numbers </li>
+  <li> <a href="https://www.securecoding.cert.org/confluence/x/qw4">CERT, MSC30-C.</a> - Do not use the rand() function for generating pseudorandom
+  numbers </li>
+  <li> <a href="https://www.securecoding.cert.org/confluence/x/WYIyAQ">CERT, MSC50-CPP.</a> - Do not use std::rand() for generating pseudorandom
+  numbers </li>
+  <li> Derived from FindSecBugs rule <a href="http://h3xstream.github.io/find-sec-bugs/bugs.htm#PREDICTABLE_RANDOM">Predictable Pseudo Random Number
+  Generator</a> </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a3</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>10min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S2092</key>
+    <name>Creating cookies without the "secure" flag is security-sensitive</name>
+    <description><![CDATA[<p>The "secure" attribute prevents cookies from being sent over plaintext connections such as HTTP, where they would be easily eavesdropped upon.
+Instead, cookies with the secure attribute are only sent over encrypted HTTPS connections.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> set the field <code>Secure</code> to <code>true</code> on the <code>HttpCookie</code> object </li>
+</ul>
+<h2>Noncompliant Code Example</h2>
+<pre>
+HttpCookie myCookie = new HttpCookie("UserSettings");
+myCookie.Secure = false; // Noncompliant; explicitly set to false
+...
+Response.Cookies.Add(myCookie);
+</pre>
+<pre>
+HttpCookie myCookie = new HttpCookie("UserSettings"); // Noncompliant; the default value of 'Secure' is used (=false)
+...
+Response.Cookies.Add(myCookie);
+</pre>
+<h2>Compliant Solution</h2>
+<pre>
+HttpCookie myCookie = new HttpCookie("UserSettings");
+myCookie.Secure = true; // Compliant
+...
+Response.Cookies.Add(myCookie);
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A2-Broken_Authentication">OWASP Top 10 2017 Category A2</a> - Broken Authentication </li>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/311">MITRE, CWE-311</a> - Missing Encryption of Sensitive Data </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/315">MITRE, CWE-315</a> - Cleartext Storage of Sensitive Information in a Cookie </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/614">MITRE, CWE-614</a> - Sensitive Cookie in HTTPS Session Without 'Secure' Attribute </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat3">SANS Top 25</a> - Porous Defenses </li>
+</ul>
+
+]]></description>
+    <severity>MINOR</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>sans-top25-porous</tag>
+    <tag>owasp-a2</tag>
+    <tag>owasp-a3</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>5min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S2077</key>
+    <name>Formatting SQL queries is security-sensitive</name>
+    <description><![CDATA[<p>Formatting strings used as SQL queries is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-9019">CVE-2018-9019</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-7318">CVE-2018-7318</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-5611">CVE-2017-5611</a> </li>
+</ul>
+<p>SQL queries often need to use a hardcoded SQL string with a dynamic parameter coming from a user request. Formatting a string to add those
+parameters to the request is a bad practice as it can result in an <a href="https://www.owasp.org/index.php/SQL_Injection">SQL injection</a>. The safe
+way to add parameters to a SQL query is to use SQL binding mechanisms.</p>
+<p>This rule flags the execution of SQL queries which are built using formatting of strings, even if there is no injection. This rule does not detect
+SQL injections. The goal is to guide security code reviews and to prevent a common bad practice.</p>
+<p>The following specific method signatures are tested:</p>
+<ul>
+  <li> <code>System.Data.SqlClient.SqlCommand.SqlCommand(string, ...)</code> </li>
+  <li> <code>System.Data.SqlClient.SqlDataAdapter.SqlDataAdapter(string, ...)</code> </li>
+  <li> <code>System.Data.Odbc.OdbcCommand.OdbcCommand(string, ...)</code> </li>
+  <li> <code>System.Data.Odbc.OdbcDataAdapter.OdbcDataAdapter(string, ...)</code> </li>
+  <li> <code>System.Data.SqlServerCe.SqlCeCommand.SqlCeCommand(string, ...)</code> </li>
+  <li> <code>System.Data.SqlServerCe.SqlCeDataAdapter.SqlCeDataAdapter(string, ...)</code> </li>
+  <li> <code>System.Data.OracleClient.OracleCommand.OracleCommand(string, ...)</code> </li>
+  <li> <code>System.Data.OracleClient.OracleDataAdapter.OracleDataAdapter(string, ...)</code> </li>
+  <li> <code>Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlCommand(...)</code> </li>
+  <li> <code>Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlCommandAsync(...)</code> </li>
+  <li> <code>Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSql&lt;TEntity&gt;(System.Linq.IQueryable&lt;TEntity&gt;,
+  System.FormattableString)</code> </li>
+  <li> <code>System.Data.SqlClient.SqlCommand.CommandText.set</code> </li>
+  <li> <code>System.Data.Odbc.OdbcCommand.CommandText.set</code> </li>
+  <li> <code>System.Data.SqlServerCe.SqlCeCommand.CommandText.set</code> </li>
+  <li> <code>System.Data.OracleClient.OracleCommand.CommandText.set</code> </li>
+</ul>
+<p>The following formatting methods will raise an issue:</p>
+<ul>
+  <li> <code>String.Concat</code> </li>
+  <li> <code>String.Format</code> </li>
+  <li> <code>FormattableString</code>, with some exceptions (see the Exceptions section) </li>
+</ul>
+<h2>Ask Yourself Whether</h2>
+<ul>
+  <li> the SQL query is built using string formatting technics, such as concatenating variables. </li>
+  <li> some of the values are coming from an untrusted source and are not sanitized. </li>
+</ul>
+<p>You may be at risk if you answered yes to this question.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> Avoid building queries manually using formatting technics. If you do it anyway, do not include user input in this building process. </li>
+  <li> Use <a href="https://www.owasp.org/index.php/Query_Parameterization_Cheat_Sheet">parameterized queries, prepared statements, or stored
+  procedures</a> whenever possible. </li>
+  <li> You may also use ORM frameworks such as Hibernate which, if used correctly, reduce injection risks. </li>
+  <li> Avoid executing SQL queries containing unsafe input in stored procedures or functions. </li>
+  <li> <a href="https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet">Sanitize</a> every unsafe input. </li>
+</ul>
+<p>You can also reduce the impact of an attack by using a database account with low privileges.</p>
+<h2>Sensitive Code Example</h2>
+<pre>
+member this.Foo(context:DbContext, query:string, param:string) =
+    let sensitiveQuery = String.Concat(query, param)
+    context.Database.ExecuteSqlCommand(sensitiveQuery) // Sensitive
+    context.Query&lt;User&gt;().FromSql(sensitiveQuery) // Sensitive
+
+    context.Database.ExecuteSqlCommand(sprintf "SELECT * FROM mytable WHERE mycol=%s" param) // Sensitive
+    let query = sprintf "SELECT * FROM mytable WHERE mycol=%s" param
+    context.Database.ExecuteSqlCommand(query) // Sensitive
+
+member this.Bar(connection:SqlConnection, param:string) =
+    let sensitiveQuery = string.Format("INSERT INTO Users (name) VALUES (\"{0}\")", param)
+    let command = SqlCommand(sensitiveQuery) // Sensitive
+
+    command.CommandText &lt;- sensitiveQuery // Sensitive
+
+    let adapter = new SqlDataAdapter(sensitiveQuery, connection) // Sensitive
+</pre>
+<h2>Exceptions</h2>
+<p>No issue will be raised in the following cases:</p>
+<ul>
+  <li> When the SQL query is a FormattableString provided <strong>directly</strong> to <code>ExecuteSqlCommand</code>,
+  <code>ExecuteSqlCommandAsync</code> or <code>FromSql</code>. In this case the FormattableString is automatically converted to a parametrized query.
+  This feature was added in Entity Framework Core 2.0. See <a
+  href="https://docs.microsoft.com/en-us/ef/core/what-is-new/ef-core-2.0#string-interpolation-in-fromsql-and-executesqlcommand">Entity Framework's
+  documentation</a> for more information. </li>
+</ul>
+<pre>
+member this.Foo(context:DbContext, value:string) =
+{
+    context.Database.ExecuteSqlCommand("SELECT * FROM mytable") // No issue raised. The query is hard-coded. Thus no injection is possible.
+    context.Database.ExecuteSqlCommand(sprintf "SELECT * FROM mytable WHERE mycol=%s" value) // Sensitive
+}
+</pre>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A1-Injection">OWASP Top 10 2017 Category A1</a> - Injection </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/89">MITRE, CWE-89</a> - Improper Neutralization of Special Elements used in an SQL Command </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/564.html">MITRE, CWE-564</a> - SQL Injection: Hibernate </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/20.html">MITRE, CWE-20</a> - Improper Input Validation </li>
+  <li> <a href="http://cwe.mitre.org/data/definitions/943.html">MITRE, CWE-943</a> - Improper Neutralization of Special Elements in Data Query Logic
+  </li>
+  <li> <a href="https://www.securecoding.cert.org/confluence/x/PgIRAg">CERT, IDS00-J.</a> - Prevent SQL injection </li>
+  <li> <a href="https://www.sans.org/top25-software-errors/#cat1">SANS Top 25</a> - Insecure Interaction Between Components </li>
+  <li> Derived from FindSecBugs rules <a href="http://h3xstream.github.io/find-sec-bugs/bugs.htm#SQL_INJECTION_JPA">Potential SQL/JPQL Injection
+  (JPA)</a>, <a href="http://h3xstream.github.io/find-sec-bugs/bugs.htm#SQL_INJECTION_JDO">Potential SQL/JDOQL Injection (JDO)</a>, <a
+  href="http://h3xstream.github.io/find-sec-bugs/bugs.htm#SQL_INJECTION_HIBERNATE">Potential SQL/HQL Injection (Hibernate)</a> </li>
+</ul>
+
+]]></description>
+    <severity>CRITICAL</severity>
+    <type>VULNERABILITY</type>
+    <tag>cwe</tag>
+    <tag>owasp-a1</tag>
+    <tag>sans-top25-insecure</tag>
+    <tag>bad-practice</tag>
+    <tag>sql</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>20min</remediationFunctionBaseEffort>
+  </rule>
+  <rule>
+    <key>S1313</key>
+    <name>Using hardcoded IP addresses is security-sensitive</name>
+    <description><![CDATA[<p>Hardcoding IP addresses is security-sensitive. It has led in the past to the following vulnerabilities:</p>
+<ul>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2006-5901">CVE-2006-5901</a> </li>
+  <li> <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2005-3725">CVE-2005-3725</a> </li>
+</ul>
+<p>Today's services have an ever-changing architecture due to their scaling and redundancy needs. It is a mistake to think that a service will always
+have the same IP address. When it does change, the hardcoded IP will have to be modified too. This will have an impact on the product development,
+delivery and deployment:</p>
+<ul>
+  <li> The developers will have to do a rapid fix every time this happens, instead of having an operation team change a configuration file. </li>
+  <li> It forces the same address to be used in every environment (dev, sys, qa, prod). </li>
+</ul>
+<p>Last but not least it has an effect on application security. Attackers might be able to decompile the code and thereby discover a potentially
+sensitive address. They can perform a Denial of Service attack on the service at this address or spoof the IP address. Such an attack is always
+possible, but in the case of a hardcoded IP address the fix will be much slower, which will increase an attack's impact.</p>
+<h2>Recommended Secure Coding Practices</h2>
+<ul>
+  <li> make the IP address configurable. </li>
+</ul>
+<h2>Noncompliant Code Example</h2>
+<pre>
+let ip = "192.168.12.42"
+let address = IPAddress.Parse(ip)
+</pre>
+<h2>Compliant Solution</h2>
+<pre>
+let ip = ConfigurationManager.AppSettings.["myapplication.ip"]
+let address = IPAddress.Parse(ip)
+</pre>
+<h2>Exceptions</h2>
+<ul>
+  <li> Although "::" is a valid IPv6 address, the rule doesn't report on it. </li>
+  <li> No issue is reported for 127.0.0.1 because loopback is not considered as sensitive </li>
+</ul>
+<h2>See</h2>
+<ul>
+  <li> <a href="https://www.owasp.org/index.php/Top_10-2017_A3-Sensitive_Data_Exposure">OWASP Top 10 2017 Category A3</a> - Sensitive Data Exposure
+  </li>
+  <li> <a href="https://www.securecoding.cert.org/confluence/x/qQCHAQ">CERT, MSC03-J.</a> - Never hard code sensitive information </li>
+</ul>
+
+]]></description>
+    <severity>MAJOR</severity>
+    <type>VULNERABILITY</type>
+    <tag>owasp-a3</tag>
+    <remediationFunction>CONSTANT_ISSUE</remediationFunction>
+    <remediationFunctionBaseEffort>30min</remediationFunctionBaseEffort>
+  </rule>
+</rules>

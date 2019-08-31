@@ -1,12 +1,12 @@
 /*
- * Sonar FSharp Plugin, open source software quality management tool.
+ * Sonar FSharpSecurity Plugin, open source software quality management tool.
  *
- * Sonar FSharp Plugin is free software; you can redistribute it and/or
+ * Sonar FSharpSecurity Plugin is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * Sonar FSharp Plugin is distributed in the hope that it will be useful,
+ * Sonar FSharpSecurity Plugin is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -18,7 +18,16 @@ import org.sonar.api.Property;
 
 import org.sonar.api.Plugin;
 
-// adapted from https://github.com/SonarSource/sonar-csharp
+/*
+This class is the top-level plugin class, called by SonarScanner.
+It installs some extensions, listed below.
+
+All code is in this project is adaptedwith gratitude from
+https://github.com/jmecsoftware/sonar-fsharp-plugin
+https://github.com/SonarSource/sonar-csharp
+*/
+
+
 @Properties({
   @Property(
     key = FSharpPlugin.FILE_SUFFIXES_KEY,
@@ -38,15 +47,15 @@ public class FSharpPlugin implements Plugin {
 
   public static final String FSHARP_WAY_PROFILE = "Sonar way";
 
-  public static final String REPOSITORY_KEY = "fsharplint";
+  public static final String REPOSITORY_KEY = "fsharpsecurity";
   public static final String REPOSITORY_NAME = "SonarQube";
 
   @Override
   public void define(Context context) {
-    context.addExtension(FSharp.class);
-    context.addExtension(FSharpSonarRulesDefinition.class);
-    context.addExtension(FSharpSonarWayProfile.class);
-    context.addExtension(FsSonarRunnerExtractor.class);
-    context.addExtension(FSharpSensor.class);
+    context.addExtension(FSharpLanguage.class);          // the F# language properties
+    context.addExtension(FSharpSonarRulesDefinition.class);  // the list of rules available
+    context.addExtension(FSharpSonarWayProfile.class);   // the quality profile
+    context.addExtension(FsSonarRunnerExtractor.class);  // a utility to unzip the F# executable
+    context.addExtension(FSharpSensor.class);            // the main analyzer
   }
 }

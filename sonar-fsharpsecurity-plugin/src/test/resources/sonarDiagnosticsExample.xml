@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AnalysisOutput>
+  <Issues>
+    <Issue>
+      <RuleKey>S1313</RuleKey>
+      <Message>Make sure using this hardcoded IP address '192.168.0.1' is safe here.</Message>
+      <AbsoluteFilePath>P:\git_repos\_mine\sonar-fsharp-security\SonarAnalyzer.FSharp\tests\SonarAnalyzer.FSharp.UnitTest\TestCases\S1313_HardcodedIpAddress.fs</AbsoluteFilePath>
+      <StartLine>18</StartLine>
+      <StartColumn>14</StartColumn>
+      <EndLine>18</EndLine>
+      <EndColumn>27</EndColumn>
+    </Issue>
+    <Issue>
+      <RuleKey>S1313</RuleKey>
+      <Message>Make sure using this hardcoded IP address '2001:db8:1234:ffff:ffff:ffff:ffff:ffff' is safe here.</Message>
+      <AbsoluteFilePath>P:\git_repos\_mine\sonar-fsharp-security\SonarAnalyzer.FSharp\tests\SonarAnalyzer.FSharp.UnitTest\TestCases\S1313_HardcodedIpAddress.fs</AbsoluteFilePath>
+      <StartLine>26</StartLine>
+      <StartColumn>14</StartColumn>
+      <EndLine>26</EndLine>
+      <EndColumn>54</EndColumn>
+    </Issue>
+  </Issues>
+</AnalysisOutput>

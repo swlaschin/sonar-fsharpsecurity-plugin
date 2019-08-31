@@ -79,10 +79,22 @@ let toRuleDetail(rule:AvailableRule) =
         with
         | ex -> failwithf "Could not get resource for name '%s'. Exception: '%s'" resourceName ex.Message
 
-    let getBackwardsCompatibleType ty =
-        ["BUG";"CODE_SMELL";"VULNERABILITY"]
-        |> List.tryFind ((=) ty)
-        |> Option.defaultValue "VULNERABILITY"
+    let toType typeStr =
+        match typeStr with
+        | "BUG" | "Bug" -> RuleType.Bug
+        | "CODE_SMELL" | "CodeSmell"  -> RuleType.CodeSmell
+        | "VULNERABILITY" | "Vulnerability" -> RuleType.Vulnerability
+        | "SECURITY_HOTSPOT" | "SecurityHostspot" -> RuleType.SecurityHotspot
+        | _ -> RuleType.Unknown
+
+    let toSeverity severityStr =
+        match severityStr with
+        | "INFO" | "Info" -> RuleSeverity.Info
+        | "MINOR" | "Minor" -> RuleSeverity.Minor
+        | "MAJOR" | "Major" -> RuleSeverity.Major
+        | "CRITICAL" | "Critical" -> RuleSeverity.Critical
+        | "BLOCKER" | "Blocker" -> RuleSeverity.Blocker
+        | _ -> RuleSeverity.Unknown
 
     /// not sure what this is for?
     /// https://github.com/SonarSource/sonar-dotnet/blob/ff7413922f6565eccccda028d0d89f22d2a11c68/sonaranalyzer-dotnet/src/SonarAnalyzer.Utilities/RuleDetailBuilder.cs#L100
@@ -108,18 +120,16 @@ let toRuleDetail(rule:AvailableRule) =
     let ruleDetail : RuleDetail =
         {
             Key = ruleId
-            Type = getBackwardsCompatibleType(getString "Type")
             Title = getString "Title"
-            Severity = getString "Severity"
-            IsActivatedByDefault = bool.Parse(getString "IsActivatedByDefault")
             Description = getResourceHtml(rule)
-            Remediation = getString "Remediation" |> toSonarQubeRemediationFunction
-            RemediationCost = getString "RemediationCost"
+            Severity = getString "Severity" |> toSeverity
+            Type = getString "Type" |> toType
             Tags = tags
             Parameters = parameters
+            IsActivatedByDefault = bool.Parse(getString "IsActivatedByDefault")
+            Remediation = getString "Remediation" |> toSonarQubeRemediationFunction
+            RemediationCost = getString "RemediationCost"
             CodeFixTitles = codeFixTitles
         }
 
     ruleDetail
-
-
