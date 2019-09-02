@@ -1,7 +1,8 @@
 # Building, Testing and Debugging the SonarQube plugin
 
 This page documents how to develop with the Java side of the plugin.
-For building, testing and debugging the F# analyzer, see [here](contributing-analyzer.md).
+
+See [here for building, testing and debugging the F# analyzer](contributing-analyzer.md).
 
 ## How the plugin works
 
@@ -66,9 +67,7 @@ To run the same script that AppVeyor uses:
 
 ```
 mvn -Dconfiguration=Release clean install
-mvn -Dconfiguration=Release -P sonar -Dsonar.branch.name=master sonar:sonar
 ```
-
 
 ## Developing with VS Code
 
