@@ -19,6 +19,7 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Compiler.Service" Version="31.0.0" />
     <PackageReference Include="Serilog" Version="2.8.0" />
+    <PackageReference Include="System.Diagnostics.Process" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>
