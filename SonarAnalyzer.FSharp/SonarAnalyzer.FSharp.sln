@@ -16,7 +16,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{57C64AD9
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FSharpAst.UnitTest", "tests\FSharpAst.UnitTest\FSharpAst.UnitTest.fsproj", "{E9B8895E-375B-46F1-9F5D-C27D4BF28EDA}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSonarRunner", "src\FsSonarRunner\FsSonarRunner.fsproj", "{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FsSonarRunner", "src\FsSonarRunner\FsSonarRunner.fsproj", "{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{A3E30814-9225-4601-B09B-577EB58EA62A}"
 	ProjectSection(SolutionItems) = preProject
@@ -26,6 +26,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{A3E30814-922
 		README.md = README.md
 		..\README.md = ..\README.md
 	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsProjectCracker", "src\FsProjectCracker\FsProjectCracker.fsproj", "{C4D7A241-C888-464B-9D07-E11E3574380B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +55,10 @@ Global
 		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A7EFA9B-2015-4C7A-9F3A-9D534A29B226}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4D7A241-C888-464B-9D07-E11E3574380B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4D7A241-C888-464B-9D07-E11E3574380B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4D7A241-C888-464B-9D07-E11E3574380B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4D7A241-C888-464B-9D07-E11E3574380B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

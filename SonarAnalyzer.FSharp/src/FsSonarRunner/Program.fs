@@ -103,7 +103,6 @@ let withStopwatchDo elapsedHandler f =
 
     // could add try/catch exception here?
 
-
 // =========================================
 // API to call
 // =========================================

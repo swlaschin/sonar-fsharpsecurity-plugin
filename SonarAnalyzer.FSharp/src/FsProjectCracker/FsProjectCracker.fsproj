@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" />
+    <Compile Include="Fsc.fs" />
+    <Compile Include="Railway.fs" />
+    <Compile Include="Api.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dotnet.ProjInfo" Version="0.36.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.7.0" />
+  </ItemGroup>
+
+</Project>
