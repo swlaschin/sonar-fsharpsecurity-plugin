@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <rules>
   <rule>
     <key>S5042</key>
@@ -13,6 +13,15 @@
 ]]></description>
     <severity>CRITICAL</severity>
     <type>VULNERABILITY</type>
+    <!-- <type>SECURITY_HOTSPOT</type> -->
+    <!--
+      IMPORTANT: The "SECURITY_HOTSPOT" RuleType is only supported by sonar api 7.3 or higher.
+      So use VULNERABILITY instead.
+
+      You can uncomment it to see the error in the unit test.
+
+      See the POM file for more discussion.
+    -->
     <tag>cwe</tag>
     <tag>owasp-a1</tag>
     <remediationFunction>CONSTANT_ISSUE</remediationFunction>

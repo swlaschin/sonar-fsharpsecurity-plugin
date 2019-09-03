@@ -46,6 +46,17 @@
         <artifactId>sonar-plugin-api</artifactId>
         <!-- minimal version of SonarQube to support. -->
         <version>6.7</version>
+        <!-- <version>7.3</version> -->
+        <!--
+          IMPORTANT: The "SECURITY_HOTSPOT" RuleType is only supported by sonar api 7.3 or higher:
+          compare http://javadocs.sonarsource.org/7.2/apidocs/org/sonar/api/rules/RuleType.html with 7.3 version.
+
+          BUT: changing the POM to use this version causes the unit tests to fail:
+          1) java.lang.NoClassDefFoundError: org/codehaus/staxmate/SMInputFactory
+          2) m.XMLStreamException: ParseError at [row,col]:[1,1] Message: Content is not allowed in prolog.
+
+          So I've left it alone for now.
+        -->
         <!-- mandatory scope -->
         <scope>provided</scope>
       </dependency>
