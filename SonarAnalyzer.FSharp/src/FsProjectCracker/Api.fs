@@ -1,23 +1,11 @@
 module FsProjectCracker.Api
 
-open Railway
+open Attempt
 open System.IO
 open Dotnet.ProjInfo.Inspect
 open MSBuild
 open System
-
-type CrackerData = string list
-
-type CrackerError =
-    | NotAFsProj of projFile:string
-
-type Errors =
-    | InvalidArgsState of string
-    | ProjectFileNotFound of string
-    | GenericError of string
-    | RaisedException of System.Exception * string
-    | ExecutionError of GetProjectInfoErrors<ShellCommandResult>
-and ShellCommandResult = ShellCommandResult of workingDir: string * exePath: string * args: string * output: seq<bool*string>
+open FsProjectCracker.Domain
 
 
 let uninstall_old_target_file log (projPath:string) =
@@ -98,20 +86,6 @@ let analizeProj projPath = attempt {
     }
 
 
-type MSBuildHostPicker =
-    | Auto = 1
-    | MSBuild  = 2
-    | DotnetMSBuild = 3
-
-type CliArgs = {
-    Framework : string option
-    Runtime : string option
-    Configuration : string option
-    MSBuild : string option
-    DotnetCli : string option
-    MSBuild_Host : MSBuildHostPicker option
-    Verbose : bool
-    }
 
 let fscArgsMain log (projPath:string) (cliArgs:CliArgs ) = attempt {
 
@@ -123,7 +97,7 @@ let fscArgsMain log (projPath:string) (cliArgs:CliArgs ) = attempt {
             Ok getFscArgs
         | false, ProjectRecognizer.ProjectLanguage.FSharp ->
             let asFscArgs props =
-                let fsc = Microsoft.FSharp.Build.Fsc()
+                let fsc = Microsoft.FSharp.Build.Fsc.Create()
                 Dotnet.ProjInfo.FakeMsbuildTasks.getResponseFileFromTask props fsc
             Ok (getFscArgsOldSdk (asFscArgs >> Ok))
         | _, ProjectRecognizer.ProjectLanguage.CSharp ->

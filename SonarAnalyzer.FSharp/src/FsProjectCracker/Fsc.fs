@@ -342,6 +342,8 @@ type [<Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:Iden
 
         builder
 
+    static member Create() = Fsc()
+
     // --baseaddress
     member fsc.BaseAddress
         with get() = baseAddress
