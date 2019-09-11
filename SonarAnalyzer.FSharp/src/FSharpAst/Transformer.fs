@@ -985,12 +985,12 @@ type FileTransformer(config:TransformerConfig) =
 
             /// Matches expressions for an unresolved call to a trait
             | BasicPatterns.TraitCall(tys:FSharpType list, name:string, memberFlags:FSharp.Compiler.Ast.MemberFlags, tys2:FSharpType list, argTypes:FSharpType list, argExprs:FSharpExpr list) ->
-                let msg = "BasicPatterns.TraitCall: not implemented"
-                warn msg
+                let msg = sprintf "BasicPatterns.TraitCall: not implemented at %O" location
+                //warn msg
                 Tast.UnknownExpression msg
 
             | pattern ->
-                let msg = sprintf "TransformExpr: Expr Pattern not recognized '%A'" pattern
+                let msg = sprintf "TransformExpr: Expr Pattern not recognized '%A' at %O" pattern location
                 warn msg
                 Tast.UnknownExpression msg
 

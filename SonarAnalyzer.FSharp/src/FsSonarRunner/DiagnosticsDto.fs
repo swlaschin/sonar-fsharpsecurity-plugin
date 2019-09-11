@@ -109,7 +109,7 @@ module IssueDto =
         let endColumn = diagnostic.Location.EndColumn
 
         // log it
-        logger.Warning("{filename}({row},{col}): {Severity} {RuleId}: {message}",
+        logger.Warning("{filename}({row},{col}): {RuleId}: {message}",
             filename,
             startLine,
             startColumn,
