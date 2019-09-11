@@ -11,6 +11,7 @@
     <Compile Include="NoncompliantLocationsTest.fs" />
     <Compile Include="RspecStringsTest.fs" />
     <Compile Include="RuleManagerTest.fs" />
+    <Compile Include="TestCases\S1313_HardcodedIpAddress.fsi" />
     <Compile Include="TestCases\S1313_HardcodedIpAddress.fs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Compile>

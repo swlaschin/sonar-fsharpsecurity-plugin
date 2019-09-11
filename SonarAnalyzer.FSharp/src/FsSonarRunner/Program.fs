@@ -59,6 +59,7 @@ do Serilog.Log.Logger <-
             .CreateLogger();
 
 let logger = Serilog.Log.Logger
+let loggerPrefix = "FsSonarRunner"
 
 
 // =========================================
@@ -84,12 +85,12 @@ let filterOnlyFsFiles (filenames:string list) =
     filenames
     |> List.filter (fun fn ->
         let isFsFile = Path.GetExtension(fn) = ".fs"
-        if not isFsFile then logger.Warning("Skipping non-fs file {filename}", fn)
+        if not isFsFile then logger.Warning("[{prefix}] Skipping non-fs file {filename}", loggerPrefix,fn)
         isFsFile
         )
     |> List.filter (fun fn ->
         let fileExists = File.Exists(fn)
-        if not fileExists then logger.Warning("Skipping non-existent file {filename}", fn)
+        if not fileExists then logger.Warning("[{prefix}] Skipping non-existent file {filename}", loggerPrefix,fn)
         fileExists
         )
 
@@ -168,23 +169,25 @@ let analyze (analysisOptions:AnalysisOptions) output =
         let config =
             match analysisOptions with
             | File filename ->
-                logger.Information("Analyze {filename}. Output={output}", filename, outputDiagnosticsFile)
+                logger.Information("[{prefix}] Analyze {filename}. Output={output}", loggerPrefix, filename, outputDiagnosticsFile)
                 let fsFiles = filterOnlyFsFiles [filename]
                 makeAnalysisConfig fsFiles
             | MultipleFiles filenames ->
-                logger.Information("Analyze multiple files. Output={output}", outputDiagnosticsFile)
+                logger.Information("[{prefix}] Analyze multiple files. Output={output}", loggerPrefix, outputDiagnosticsFile)
                 let fsFiles = filterOnlyFsFiles filenames
                 makeAnalysisConfig fsFiles
             | Directory dirname ->
-                logger.Information("Analyze directory {dirname}. Output={output}", dirname, outputDiagnosticsFile)
+                logger.Information("[{prefix}] Analyze directory {dirname}. Output={output}", loggerPrefix, dirname, outputDiagnosticsFile)
                 let fsFiles = Directory.EnumerateFiles(dirname,"*.fs") |> Seq.toList
                 for filename in fsFiles do
-                    logger.Information("...Adding file {filename}.", filename)
+                    logger.Information("[{prefix}] ...Adding file {filename}.", loggerPrefix, filename)
                 makeAnalysisConfig fsFiles
             | Config input ->
                 let inputConfigFilename = getConfigFilename input
+                logger.Information("[{prefix}] Analyze config {configFilename}. Output={output}", loggerPrefix, inputConfigFilename, outputDiagnosticsFile)
                 ImportExportAnalysisConfig.import inputConfigFilename
 
+        logger.Information("[{prefix}] Starting analysis", loggerPrefix)
         let diagnostics = RuleRunner.analyzeConfig config
 
         diagnostics |> OutputDiagnostics.outputTo outputDiagnosticsFile
@@ -193,7 +196,7 @@ let analyze (analysisOptions:AnalysisOptions) output =
         diagnostics
 
     |> withStopwatchDo (fun diagnostics elapsedTime ->
-        logger.Information("Done. ElapsedTime={elapsedTime}. {diagnosticsCount} diagnostics found.", elapsedTime, diagnostics.Length)
+        logger.Information("[{prefix}] Done. ElapsedTime={elapsedTime}. {diagnosticsCount} diagnostics found.", loggerPrefix, elapsedTime, diagnostics.Length)
         )
 
 // =========================================

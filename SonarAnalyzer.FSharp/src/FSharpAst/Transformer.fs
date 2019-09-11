@@ -36,6 +36,7 @@ type FileTransformer(config:TransformerConfig) =
     // * mutual recursion is easier with members rather than let-bound functions
 
     let logger = Serilog.Log.Logger
+    let loggerPrefix = "FSharpAst.FileTransformer"
 
     // logging related
     let debug msg =
@@ -87,7 +88,9 @@ type FileTransformer(config:TransformerConfig) =
         elif accessibility.IsProtected then
             Tast.Accessibility.Protected
         else
-            failwithf "Unknown accessibility for Entity %s at %A" context.Name context.Location
+            let msg = sprintf "Unknown accessibility for Entity %s at %A" context.Name context.Location
+            logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+            Tast.Accessibility.Public // use default
 
     /// XmlDocs are stored as an IList<string>. This converts them into a string list
     let getXmlDoc xmlDoc =
@@ -314,7 +317,10 @@ type FileTransformer(config:TransformerConfig) =
             let typeArgs = ty.GenericArguments |> this.TransformGenericArguments
             match typeArgs with
             | [domain; range] -> Tast.FunctionType {Domain=domain; Range=range}
-            | _ -> failwithf "TransformFSharpType.IsFunctionType: Expected 2 GenericArguments. Found %i" typeArgs.Length
+            | _ ->
+                let msg = sprintf "TransformFSharpType.IsFunctionType: Expected 2 GenericArguments. Found %i" typeArgs.Length
+                logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+                failwith msg
         else
             warn (sprintf "TransformFSharpType: Unknown type classification for %A" ty)
             Tast.UnknownFSharpType (ty.ToString())
@@ -403,7 +409,9 @@ type FileTransformer(config:TransformerConfig) =
             // Tast.DefaultsToConstraint (this.TransformFSharpType gpConstraint.DefaultsToConstraintData.DefaultsToTarget)
             Tast.DefaultsToConstraint (this.TypeName gpConstraint.DefaultsToConstraintData.DefaultsToTarget)
         else
-            failwithf "Unknown FSharpGenericParameterConstraint %A" gpConstraint
+            let msg = sprintf "Unknown FSharpGenericParameterConstraint %A" gpConstraint
+            logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+            failwith msg
 
     /// Constraints are stored as an IList<FSharpGenericParameterConstraint>. This converts them into a Tast.GenericParameterConstraint list
     member this.TransformGenericParameterConstraints (constraints:FSharpGenericParameterConstraint seq) =

@@ -10,7 +10,10 @@ open System.IO
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
 
+
 module FileApi =
+    let logger = Serilog.Log.Logger
+    let loggerPrefix = "FSharpAst"
 
     /// Parse the source text associated with a file. Return a Result<AssemblyContents,Errors)
     let parseFileAndSource (filename:string) sourceText : Result<FSharpAssemblyContents,FSharpErrorInfo []> =
@@ -34,7 +37,10 @@ module FileApi =
         |> Async.RunSynchronously
         |> function
             | Choice1Of2 contents -> contents
-            | Choice2Of2 ex -> failwithf "Unexpected exception parsing file: '%s'" ex.Message
+            | Choice2Of2 ex ->
+                let msg = sprintf "Unexpected exception parsing file: '%s' Exception: '%s'" filename ex.Message
+                logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+                failwith msg
 
 
     /// Parse a file. Return a Result<AssemblyContents,Errors)
@@ -44,16 +50,26 @@ module FileApi =
 
     /// Translate sourceText with an associated file to a Tast
     let translateFileAndSource config filename sourceText : Result<Tast.ImplementationFile, FSharpErrorInfo[]> =
-        match parseFileAndSource filename sourceText with
-        | Error errs ->
-            Error errs
-        | Ok assemblyContents ->
-            let transformer = FileTransformer(config)
-            if assemblyContents.ImplementationFiles.IsEmpty then
-                failwith "no implementation files found"
-            else
-                let ast = transformer.TransformFile(assemblyContents.ImplementationFiles |> Seq.head)
-                Ok ast
+        let dummyResult : Tast.ImplementationFile = {Name=filename; Decls=[]}
+
+        if IO.File.Exists filename |> not then
+            logger.Warning("[{prefix}] File not found: '{filename}'", loggerPrefix,filename)
+            Ok dummyResult
+        else if IO.Path.GetExtension(filename) <> ".fs" then
+            logger.Information("[{prefix}] Skipping non .fs file: '{filename}'", loggerPrefix,filename)
+            Ok dummyResult
+        else
+            match parseFileAndSource filename sourceText with
+            | Error errs ->
+                Error errs
+            | Ok assemblyContents ->
+                let transformer = FileTransformer(config)
+                if assemblyContents.ImplementationFiles.IsEmpty then
+                    logger.Warning("[{prefix}] No implementation for: '{filename}'", loggerPrefix,filename)
+                    Ok dummyResult
+                else
+                    let ast = transformer.TransformFile(assemblyContents.ImplementationFiles |> Seq.head)
+                    Ok ast
 
     /// Translate a file to a Tast
     let translateFile config filename : Result<Tast.ImplementationFile, FSharpErrorInfo[]> =
