@@ -52,11 +52,15 @@ module FileApi =
     let translateFileAndSource config filename sourceText : Result<Tast.ImplementationFile, FSharpErrorInfo[]> =
         let dummyResult : Tast.ImplementationFile = {Name=filename; Decls=[]}
 
+        let isImplementationFile =
+            let ext = IO.Path.GetExtension(filename)
+            [".fs"; ".fsx"] |> List.contains ext
+
         if IO.File.Exists filename |> not then
             logger.Warning("[{prefix}] File not found: '{filename}'", loggerPrefix,filename)
             Ok dummyResult
-        else if IO.Path.GetExtension(filename) <> ".fs" then
-            logger.Information("[{prefix}] Skipping non .fs file: '{filename}'", loggerPrefix,filename)
+        elif not isImplementationFile then
+            logger.Information("[{prefix}] Skipping non .fs/.fsx file: '{filename}'", loggerPrefix,filename)
             Ok dummyResult
         else
             match parseFileAndSource filename sourceText with
