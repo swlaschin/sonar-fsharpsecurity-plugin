@@ -5,7 +5,7 @@ open Microsoft.Extensions.Primitives
 
 module Program =
 
-    let responses(response:HttpResponse ) =
+    let responses (response:HttpResponse) =
 
         // Response headers
         response.Headers.Add("Set-Cookie", StringValues "") // Noncompliant

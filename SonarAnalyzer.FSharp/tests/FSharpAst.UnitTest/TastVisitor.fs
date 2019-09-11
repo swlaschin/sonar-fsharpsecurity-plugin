@@ -50,30 +50,61 @@ let isType typeDesc (node:Tast.FSharpType) =
     | Tast.OtherType _
     | Tast.ByRefType _ -> false
 
+/// return the context for the first ancestor or self that matches the condition
+let rec tryAncestorOrSelf condition (ctx:TastContext) =
+    if condition ctx.Node then
+        Some ctx
+    else
+        ctx.TryPop()
+        |> Option.bind (tryAncestorOrSelf condition)
+
+/// return the context for the first ancestor that matches the condition
+let tryAncestor condition (ctx:TastContext) =
+    ctx.TryPop()
+    |> Option.bind (tryAncestorOrSelf condition)
+
+/// Return the ctx if the node matches the specified type
+let tryCast<'T> (ctx:TastContext) :TastContext<'T> option =
+    match ctx.Node with
+    | :? 'T as node ->
+        Some {Node=node; Ancestors=ctx.Ancestors}
+    | _ ->
+        None
+
+/// return the context for the first ancestor or self that matches the type parameter
+let tryCastAncestorOrSelf<'T> (ctx:TastContext) :TastContext<'T> option =
+    let condition (node:obj) =
+        match node with
+        | :? 'T -> true
+        | _ -> false
+    ctx
+    |> tryAncestorOrSelf condition
+    |> Option.bind (tryCast<'T>)
+
 let tryParentExpr (context:TastContext) =
-    context.TryAncestorOrSelf<Tast.Expression>()
+    context |> tryCastAncestorOrSelf<Tast.Expression>
 
 let tryParentCallExpr (context:TastContext) =
-    context.TryAncestorOrSelf<Tast.CallExpr>()
+    context |> tryCastAncestorOrSelf<Tast.CallExpr>
 
 // Detect if this context is used in an argument to a CallExpr.
 // If so, return the arg index or None if not found
 let tryArgumentIndex (context:TastContext) =
 
-    let isChildOfArg (callExprContext:TastContext) (argExpr:Tast.Expression) =
+    let isChildOfArg (callExprContext:TastContext<Tast.CallExpr>) (argExpr:Tast.Expression) =
         let argExprContext = callExprContext.Push(argExpr)
         let mutable found = false
         let accept argChild =
             found <- argChild.Node = context.Node
             true // keep going
         let v = TastVisitor(accept)
-        v.Visit(argExpr,argExprContext)
+        v.Visit(argExprContext)
         found
 
     option {
-    let! callCtx,callExp = tryParentCallExpr context
+    let! callCtx = tryParentCallExpr context
     return!
-        callExp.Args
+        callCtx.Node.Args
         |> List.tryFindIndex (isChildOfArg callCtx)
     }
 
@@ -169,18 +200,17 @@ let d = "d".ToString()
 """
 
     let tast = translateText text
-    let stringFormatDescriptor : Tast.MemberDescriptor = {
+    let stringFormatDescriptor : Tast.MfvDescriptor = {
         DeclaringEntity = Some systemStringType
         CompiledName = "Format"
-        DisplayName = "Format"
         }
 
     let results = ResizeArray()
     let accept (context:TastContext) =
         option {
             let! node = tryMatchType<Tast.ConstantExpr> context.Node
-            let! _callCtx, callNode = tryParentCallExpr context
-            if callNode.Member = stringFormatDescriptor then
+            let! callCtx = tryParentCallExpr context
+            if callCtx.Node.Member = stringFormatDescriptor then
                 let! argumentIndex = tryArgumentIndex context
                 if argumentIndex >= 1 && node.Type |> isType stringType then
                     results.Add node.Value

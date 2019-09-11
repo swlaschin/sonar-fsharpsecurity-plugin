@@ -2,12 +2,17 @@
 
 open FSharpAst
 
+let logger = Serilog.Log.Logger
+let loggerPrefix = "SonarAnalyzer.FSharp.RuleRunner"
+
 (* ===============================================
 Run one or more rules
 =============================================== *)
 
 /// run a specific list of rules on a file
 let analyzeFileWithRules (rules:Rule list) (filename:string) :Diagnostic list =
+    logger.Information("[{prefix}] Analyzing {filename} ", loggerPrefix, filename)
+
     let config = TransformerConfig.Default
 
     let results = ResizeArray()
@@ -24,6 +29,8 @@ let analyzeFileWithRules (rules:Rule list) (filename:string) :Diagnostic list =
     | Ok tast ->
         visitor.Visit(tast)
         results |> Seq.toList
+
+    |> fun results -> logger.Information("[{prefix}] ... {count} issues found", loggerPrefix, results.Length); results
 
 /// run all the rules on a file
 let analyzeFileWithAllRules (filename:string) :Diagnostic list =
@@ -51,11 +58,14 @@ let analyzeConfig (root:AnalysisConfig.Root)  :Diagnostic list =
 
         |> List.map (fun availableRule -> availableRule.Rule)
 
+    logger.Information("[{prefix}] Analyzing {ruleCount} rules", loggerPrefix, rulesToUse.Length)
 
     match root.FileSelection with
     | AnalysisConfig.SelectedFiles files ->
         files
+        |> fun files -> logger.Information("[{prefix}] Analyzing {fileCount} files", loggerPrefix, files.Length); files
         |> List.collect (fun file -> analyzeFileWithRules rulesToUse file.Filename)
+
     | AnalysisConfig.Projects _ -> failwithf "Projects not yet implemented"
 
 

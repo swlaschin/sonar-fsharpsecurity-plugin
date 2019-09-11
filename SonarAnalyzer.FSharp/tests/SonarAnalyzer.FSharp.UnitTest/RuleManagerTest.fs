@@ -3,6 +3,7 @@
 open SonarAnalyzer.FSharp
 open NUnit.Framework
 open FSharpAst
+open System
 
 // check that the Rule manager logic work
 
@@ -15,8 +16,8 @@ let ``check all AvailableRules can run without error``() =
         Assert.Fail("Expect non empty list of rules")
 
     /// create a dummy context to run each rule on
-    let dummyNode : Tast.ImplementationFile = {Name= "dummy"; Decls=[]}
-    let ctx : TastContext = {Filename=dummyNode.Name; Node=dummyNode; Ancestors=[]}
+    let dummyNode : Tast.ImplementationFile = {FileInfo= IO.FileInfo __SOURCE_FILE__; Decls=[]}
+    let ctx : TastContext = {Node=dummyNode; Ancestors=[]}
 
     let failedRules = ResizeArray()
     for availableRule in availableRules do

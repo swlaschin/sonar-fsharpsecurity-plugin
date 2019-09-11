@@ -13,8 +13,9 @@ To work with this project interactively, you need access to FSharp.Compiler.Serv
 
 
 #r @"..\..\packages\FSharp.Compiler.Service\lib\netstandard2.0\FSharp.Compiler.Service.dll"
+#r @"..\..\packages\Serilog\lib\netstandard2.0\Serilog.dll"
 #r @"bin\Debug\netstandard2.0\FSharpAst.dll"
-#r @"netstandard"
+#r @"netstandard.dll"
 
 open FSharpAst
 
@@ -50,9 +51,9 @@ let resultValue = function
 // ---------------------------
 
 let stringType : Tast.NamedTypeDescriptor =
-    {AccessPath = "Microsoft.FSharp.Core"; DisplayName = "string"; CompiledName = "string"}
+    {AccessPath = "Microsoft.FSharp.Core"; CompiledName = "string"}
 let intType : Tast.NamedTypeDescriptor =
-    {AccessPath = "Microsoft.FSharp.Core"; DisplayName = "int"; CompiledName = "int"}
+    {AccessPath = "Microsoft.FSharp.Core"; CompiledName = "int"}
 
 let text = """
 let s = "s"

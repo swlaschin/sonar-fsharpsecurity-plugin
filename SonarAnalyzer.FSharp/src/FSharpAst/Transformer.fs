@@ -1,6 +1,8 @@
 ﻿namespace FSharpAst
 
 open FSharp.Compiler.SourceCodeServices
+open System
+open System.Collections.Generic
 
 // Context for logging errors
 type Context = {
@@ -36,6 +38,7 @@ type FileTransformer(config:TransformerConfig) =
     // * mutual recursion is easier with members rather than let-bound functions
 
     let logger = Serilog.Log.Logger
+    let loggerPrefix = "FSharpAst.FileTransformer"
 
     // logging related
     let debug msg =
@@ -48,6 +51,12 @@ type FileTransformer(config:TransformerConfig) =
         logger.Error(msg)
 
     let declaringEntityStack = Stack<Tast.Entity>()
+
+    /// information about named types that were encountered during analysis
+    let namedTypeDict = Dictionary<Tast.NamedTypeDescriptor,Tast.NamedType>()
+
+    /// information about MFVs that were encountered during analysis
+    let mfvDict = Dictionary<Tast.MfvDescriptor,Tast.MfvInfo>()
 
     //let adjustDeclaringEntity e =
     //    // if the entity is already the top one, then do nothing
@@ -65,7 +74,7 @@ type FileTransformer(config:TransformerConfig) =
     let locationOf (range:FSharp.Compiler.Range.range) : Tast.Location =
         if not config.UseEmptyLocation then
             {
-            FileName = range.FileName
+            FileInfo = IO.FileInfo range.FileName
             StartLine = range.StartLine
             StartColumn = range.StartColumn
             EndLine = range.EndLine
@@ -87,7 +96,9 @@ type FileTransformer(config:TransformerConfig) =
         elif accessibility.IsProtected then
             Tast.Accessibility.Protected
         else
-            failwithf "Unknown accessibility for Entity %s at %A" context.Name context.Location
+            let msg = sprintf "Unknown accessibility for Entity %s at %A" context.Name context.Location
+            logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+            Tast.Accessibility.Public // use default
 
     /// XmlDocs are stored as an IList<string>. This converts them into a string list
     let getXmlDoc xmlDoc =
@@ -126,7 +137,7 @@ type FileTransformer(config:TransformerConfig) =
 
         let decls = implFile.Declarations |> List.map this.TransformDecl
         let file : Tast.ImplementationFile = {
-            Name = implFile.FileName
+            FileInfo = IO.FileInfo implFile.FileName
             Decls = decls
         }
         file
@@ -143,18 +154,19 @@ type FileTransformer(config:TransformerConfig) =
             |> Tast.ImplementationFileDecl.Entity
         | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue(mfv, vs, body) ->
             this.TransformMemberOrFunctionOrValue(mfv, vs, body)
-            |> Tast.ImplementationFileDecl.MemberOrFunctionOrValue
+            |> Tast.ImplementationFileDecl.MfvDecl
         | FSharpImplementationFileDeclaration.InitAction(body) ->
             let initAction : Tast.InitAction = {
                 Unhandled = {
                     Comment = "InitAction"
-                    Location = Some (locationOf body.Range)
+                    Value = box body
+                    Location = locationOf body.Range
                     }
                 }
             Tast.ImplementationFileDecl.InitAction initAction
 
     // =======================================
-    // Transform entities
+    // Entities
     // =======================================
 
 
@@ -193,17 +205,33 @@ type FileTransformer(config:TransformerConfig) =
             warn (sprintf "TransformEntity: Unhandled entity " + entity.CompiledName)
             let unhandled : Tast.Unhandled = {
                 Comment = entity.CompiledName
-                Location = Some (locationOf entity.DeclarationLocation)
-            }
+                Value = box entity
+                Location = locationOf entity.DeclarationLocation
+                }
             Tast.UnhandledEntity unhandled
 
     /// Tranform a type entity into a NamedTypeDescriptor
     member this.NamedTypeDescriptor(entity:FSharpEntity) : Tast.NamedTypeDescriptor =
-        {
+        let desc : Tast.NamedTypeDescriptor = {
             AccessPath = entity.AccessPath
-            DisplayName = entity.DisplayName
             CompiledName = entity.CompiledName
-        }
+            }
+        // add to cache if needed
+        //if not (namedTypeDict.ContainsKey desc) then
+        //    namedTypeDict.Add(desc,this.TransformTypeEntityDecl(entity))
+        desc
+
+    /// extract the member info from an MFV
+    member this.MfvDescriptor(mfv:FSharpMemberOrFunctionOrValue) : Tast.MfvDescriptor =
+        let desc : Tast.MfvDescriptor = {
+            DeclaringEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
+            CompiledName = mfv.CompiledName
+            }
+        // add to cache if needed
+        if not (mfvDict.ContainsKey desc) then
+            mfvDict.Add(desc,this.TransformMFVInfo(mfv))
+        desc
+
 
     /// Tranform a type into a TypeName
     member this.TypeName(ty:FSharpType) : Tast.TypeName =
@@ -230,7 +258,7 @@ type FileTransformer(config:TransformerConfig) =
                 this.TransformAttributes entity.Attributes
         let common : Tast.TypeEntityCommon = {
             Name = name
-            Namespace = entity.Namespace
+            EnclosingEntity = None // entity.DeclaringEntity
             Location = location
             XmlDoc = xmlDoc
             Accessibility = accessibility
@@ -251,41 +279,42 @@ type FileTransformer(config:TransformerConfig) =
                     Common = common
                     AbbreviatedType = this.TransformFSharpType entity.AbbreviatedType
                     }
+            elif entity.IsClass then
+                //TODO
+                Tast.ClassDecl {Comment=entity.CompiledName; Value=entity; Location=location}
+            elif entity.IsInterface then
+                //TODO
+                Tast.InterfaceDecl {Comment=entity.CompiledName; Value=entity; Location=location}
+            elif entity.IsDelegate then
+                //TODO
+                Tast.DelegateDecl {Comment=entity.CompiledName; Value=entity; Location=location}
+            elif entity.IsValueType && not entity.IsEnum then
+                //TODO
+                Tast.StructDecl {Comment=entity.CompiledName; Value=entity; Location=location}
             elif entity.IsFSharpRecord then
-                Tast.Record {
+                Tast.RecordDecl {
                     Common = common
                     Fields = []
                     }
             elif entity.IsFSharpUnion then
                 //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
-            elif entity.IsClass then
-                //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
-            elif entity.IsInterface then
-                //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
-            elif entity.IsDelegate then
-                //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
+                Tast.UnionDecl {Comment=entity.CompiledName; Value=entity; Location=location}
             elif entity.IsEnum then
                 //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
+                Tast.EnumDecl {Comment=entity.CompiledName; Value=entity; Location=location}
             elif entity.IsFSharpExceptionDeclaration then
                 //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
+                Tast.ExceptionDecl {Comment=entity.CompiledName; Value=entity; Location=location}
             elif entity.IsMeasure then
                 //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
+                Tast.MeasureDecl {Comment=entity.CompiledName; Value=entity; Location=location}
             elif entity.IsProvided then
                 //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
-            elif entity.IsValueType then
-                //TODO
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
+                warn (sprintf "TransformTypeEntityDecl: Unhandled provided type " + entity.CompiledName)
+                Tast.UnhandledTypeEntity {Comment=entity.CompiledName; Value=entity; Location=location}
             else
                 warn (sprintf "TransformTypeEntityDecl: Unhandled entity " + entity.CompiledName)
-                Tast.UnknownTypeEntity (entity.CompiledName,location)
+                Tast.UnhandledTypeEntity {Comment=entity.CompiledName; Value=entity; Location=location}
 
         let currentTypeEntity = typeEntity
         typeEntity
@@ -314,14 +343,17 @@ type FileTransformer(config:TransformerConfig) =
             let typeArgs = ty.GenericArguments |> this.TransformGenericArguments
             match typeArgs with
             | [domain; range] -> Tast.FunctionType {Domain=domain; Range=range}
-            | _ -> failwithf "TransformFSharpType.IsFunctionType: Expected 2 GenericArguments. Found %i" typeArgs.Length
+            | _ ->
+                let msg = sprintf "TransformFSharpType.IsFunctionType: Expected 2 GenericArguments. Found %i" typeArgs.Length
+                logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+                failwith msg
         else
             warn (sprintf "TransformFSharpType: Unknown type classification for %A" ty)
             Tast.UnknownFSharpType (ty.ToString())
 
-/// =============================================
-/// Atributes
-/// =============================================
+    // =============================================
+    // Attributes
+    // =============================================
 
     /// Transform a FSharpAttribute into a Tast.Attribute
     member this.TransformAttribute (attribute:FSharpAttribute) : Tast.Attribute =
@@ -365,9 +397,9 @@ type FileTransformer(config:TransformerConfig) =
         |> List.ofSeq
         |> List.map this.TransformAttribute
 
-/// =============================================
-/// GenericParameterConstraints
-/// =============================================
+    // =============================================
+    // GenericParameterConstraints
+    // =============================================
 
     /// Constraints are stored as an IList<FSharpGenericParameterConstraint>. This converts them into a Tast.GenericParameterConstraint list
     member this.TransformGenericParameterConstraint (gpConstraint:FSharpGenericParameterConstraint) : Tast.GenericParameterConstraint =
@@ -403,7 +435,9 @@ type FileTransformer(config:TransformerConfig) =
             // Tast.DefaultsToConstraint (this.TransformFSharpType gpConstraint.DefaultsToConstraintData.DefaultsToTarget)
             Tast.DefaultsToConstraint (this.TypeName gpConstraint.DefaultsToConstraintData.DefaultsToTarget)
         else
-            failwithf "Unknown FSharpGenericParameterConstraint %A" gpConstraint
+            let msg = sprintf "Unknown FSharpGenericParameterConstraint %A" gpConstraint
+            logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
+            failwith msg
 
     /// Constraints are stored as an IList<FSharpGenericParameterConstraint>. This converts them into a Tast.GenericParameterConstraint list
     member this.TransformGenericParameterConstraints (constraints:FSharpGenericParameterConstraint seq) =
@@ -447,29 +481,20 @@ type FileTransformer(config:TransformerConfig) =
         |> List.map this.TransformGenericArgument
 
 
-/// =============================================
-/// Members, functions, or values
-/// =============================================
-
-    /// extract the member info from an MFV
-    member this.MemberDescriptor(mfv:FSharpMemberOrFunctionOrValue) : Tast.MemberDescriptor =
-        {
-        DeclaringEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
-        CompiledName = mfv.CompiledName
-        DisplayName = mfv.DisplayName
-        }
+    // =============================================
+    // Members, functions, or values
+    // =============================================
 
     /// extract the common parts of an MFV
-    member this.TransformMFVInfo(mfv:FSharpMemberOrFunctionOrValue) : Tast.MFVInfo =
+    member this.TransformMFVInfo(mfv:FSharpMemberOrFunctionOrValue) : Tast.MfvInfo =
         let context = mfvContext mfv
         let name = mfv.CompiledName
         let xmlDoc = getXmlDoc mfv.XmlDoc
         let accessibility = accessibility mfv.Accessibility context
-        let attributes =
-                this.TransformAttributes mfv.Attributes
+        let attributes = this.TransformAttributes mfv.Attributes
         {
             Name = name
-            Location = context.Location
+            EnclosingEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
             XmlDoc = xmlDoc
             Accessibility = accessibility
             Attributes = attributes
@@ -477,33 +502,34 @@ type FileTransformer(config:TransformerConfig) =
         }
 
     /// Transform a TransformMemberOrFunctionOrValue
-    member this.TransformMemberOrFunctionOrValue (mfv:FSharpMemberOrFunctionOrValue,args: FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.MemberOrFunctionOrValue =
+    member this.TransformMemberOrFunctionOrValue (mfv:FSharpMemberOrFunctionOrValue,args: FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.MfvDecl =
         if mfv.IsMember then
-            this.TransformMember(mfv,args,body) |> Tast.Member
+            this.TransformMember(mfv,args,body) |> Tast.MemberDecl
         elif mfv.IsTypeFunction then
-            this.TransformFunction(mfv,args,body) |> Tast.Function
+            this.TransformFunction(mfv,args,body) |> Tast.FunctionDecl
         elif mfv.IsValue then
-            this.TransformValue(mfv,args,body) |> Tast.Value
+            this.TransformValue(mfv,args,body) |> Tast.ValueDecl
         elif mfv.IsValCompiledAsMethod then
             // top level lambdas such as let x = fun y -> ...
-            this.TransformValCompiledAsMethod(mfv,args,body) |> Tast.TopLevelLambdaValue
+            this.TransformValCompiledAsMethod(mfv,args,body) |> Tast.TopLevelLambdaValueDecl
         elif mfv.IsModuleValueOrMember then
             let unhandled : Tast.Unhandled = {
                 Comment = mfv.CompiledName
-                Location = Some (locationOf mfv.DeclarationLocation)
-            }
+                Value = box mfv
+                Location = locationOf mfv.DeclarationLocation
+                }
             Tast.UnhandledMemberOrFunctionOrValue unhandled
         else
             let unhandled : Tast.Unhandled = {
                 Comment = mfv.CompiledName
-                Location = Some (locationOf mfv.DeclarationLocation)
-            }
+                Value = box mfv
+                Location = locationOf mfv.DeclarationLocation
+                }
             Tast.UnhandledMemberOrFunctionOrValue unhandled
 
     member this.TransformMember (mfv:FSharpMemberOrFunctionOrValue, argListList:FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.MemberDecl  =
         {
             Info = this.TransformMFVInfo mfv
-            EnclosingEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
             Parameters = [
                 for argList in argListList do
                     if argList.Length = 0 then
@@ -514,12 +540,12 @@ type FileTransformer(config:TransformerConfig) =
                         yield Tast.TupleParam [for arg in argList do yield this.TransformMFVInfo arg ]
                 ]
             Body = this.TransformExpr body
+            Location = locationOf mfv.DeclarationLocation
         }
 
     member this.TransformFunction (mfv:FSharpMemberOrFunctionOrValue, argListList: FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.FunctionDecl  =
         {
             Info = this.TransformMFVInfo mfv
-            EnclosingEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
             Parameters = [
                 for argList in argListList do
                     if argList.Length = 0 then
@@ -530,19 +556,19 @@ type FileTransformer(config:TransformerConfig) =
                         yield Tast.TupleParam [for arg in argList do yield this.TransformMFVInfo arg ]
                 ]
             Body = this.TransformExpr body
+            Location = locationOf mfv.DeclarationLocation
         }
 
     member this.TransformValue (mfv:FSharpMemberOrFunctionOrValue,args: FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.ValueDecl  =
         {
             Info = this.TransformMFVInfo mfv
-            EnclosingEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
             Body = this.TransformExpr(body)
+            Location = locationOf mfv.DeclarationLocation
         }
 
-    member this.TransformValCompiledAsMethod (mfv:FSharpMemberOrFunctionOrValue, argListList:FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.TopLevelLambdaValue =
+    member this.TransformValCompiledAsMethod (mfv:FSharpMemberOrFunctionOrValue, argListList:FSharpMemberOrFunctionOrValue list list, body: FSharpExpr) : Tast.TopLevelLambdaValueDecl =
         {
             Info = this.TransformMFVInfo mfv
-            EnclosingEntity = mfv.DeclaringEntity |> Option.map this.NamedTypeDescriptor
             Parameters = [
                 for argList in argListList do
                     if argList.Length = 0 then
@@ -553,7 +579,12 @@ type FileTransformer(config:TransformerConfig) =
                         yield Tast.TupleParam [for arg in argList do yield this.TransformMFVInfo arg ]
                 ]
             Body = this.TransformExpr body
+            Location = locationOf mfv.DeclarationLocation
         }
+
+    // ================================================
+    // Expressions
+    // ================================================
 
     member this.TransformExpr (body: FSharpExpr) : Tast.Expression =
         let location = locationOf body.Range
@@ -566,7 +597,7 @@ type FileTransformer(config:TransformerConfig) =
                 Tast.ValueExpr {
                     // A value refers to another MemberOrFunctionOrValue
                     // we don't care about the implementation of the MFV, only the common stuff such as name and type
-                    Value = this.TransformMFVInfo(value)
+                    Value = value |> this.MfvDescriptor
                     Location = location
                 }
 
@@ -644,13 +675,13 @@ type FileTransformer(config:TransformerConfig) =
             /// Matches expressions which are calls to members or module-defined functions. When calling curried functions and members the
             /// arguments are collapsed to a single collection of arguments, as done in the compiled version of these.
             | BasicPatterns.Call (expr:FSharpExpr option, mfv:FSharpMemberOrFunctionOrValue, types1:FSharpType list, types2:FSharpType list, exprs:FSharpExpr list) ->
-                let expr = expr |> Option.map this.TransformExpr
-                let memb = mfv |> this.MemberDescriptor
+                let instanceExpr = expr |> Option.map this.TransformExpr
+                let memb = mfv |> this.MfvDescriptor
                 let types1 = types1 |> List.map this.TransformFSharpType
                 let types2 = types2 |> List.map this.TransformFSharpType
                 let args = exprs |> List.map this.TransformExpr
                 Tast.CallExpr {
-                    Expression = expr
+                    Instance = instanceExpr
                     Member = memb
                     ClassTypeArgs = types1
                     MethodTypeArgs = types2
@@ -662,7 +693,7 @@ type FileTransformer(config:TransformerConfig) =
             /// Matches expressions which are calls to object constructors
             | BasicPatterns.NewObject (target:FSharpMemberOrFunctionOrValue, typeArgs: FSharpType list, ctorArgs: FSharpExpr list) ->
                 Tast.NewObjectExpr {
-                    Ctor = this.MemberDescriptor target
+                    Ctor = this.MfvDescriptor target
                     TypeArgs = typeArgs |> List.map this.TransformFSharpType
                     Args = ctorArgs |> List.map this.TransformExpr
                     ArgTypes = ctorArgs |> List.map (fun arg -> this.TransformFSharpType arg.Type)
@@ -849,7 +880,7 @@ type FileTransformer(config:TransformerConfig) =
             /// Matches expressions which set the contents of a mutable variable
             | BasicPatterns.ValueSet (variable:FSharpMemberOrFunctionOrValue, expr:FSharpExpr) ->
                 Tast.ValueSetExpr {
-                    Variable = this.TransformMFVInfo variable
+                    Variable = this.MfvDescriptor variable
                     Expr = this.TransformExpr expr
                     Location = location
                 }

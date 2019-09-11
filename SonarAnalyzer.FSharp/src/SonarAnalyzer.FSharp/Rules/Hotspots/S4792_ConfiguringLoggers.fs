@@ -4,6 +4,8 @@ open SonarAnalyzer.FSharp
 open SonarAnalyzer.FSharp.RuleHelpers
 open FSharpAst
 open System.Net
+open OptionBuilder
+open EarlyReturn
 
 // =================================================
 // #4792 Configuring loggers is security-sensitive
@@ -17,43 +19,37 @@ module Private =
     let messageFormat = "Make sure that this logger's configuration is safe.";
     let rule = DiagnosticDescriptor.Create(DiagnosticId, messageFormat, RspecStrings.ResourceManager)
 
-    exception EarlyReturn
-
-    let checkWithEarlyReturn f x =
-        try
-            f x
-        with
-        | :? EarlyReturn ->
-            None
-
     /// Return the location if the method matches the context, otherwise None
     let matchMethod className methodName (ctx:TastContext) =
-        let call, declaringEntity =
+        let callCtx, declaringEntity =
             option {
-                let! call = ctx.Try<Tast.CallExpr>()
-                let! declaringEntity = call.Member.DeclaringEntity
-                return call,declaringEntity
+                let! callCtx = CallExprHelper.tryMatch ctx
+                let! declaringEntity = callCtx.Node.Member.DeclaringEntity
+                return callCtx,declaringEntity
                 }
             |> Option.defaultWith (fun _ -> raise EarlyReturn)
 
-        let entityPath = sprintf "%s.%s" declaringEntity.AccessPath declaringEntity.DisplayName
-        if entityPath = className && call.Member.DisplayName = methodName then
+        let call = callCtx.Node
+
+        let entityPath = sprintf "%s.%s" declaringEntity.AccessPath declaringEntity.CompiledName
+        if entityPath = className && call.Member.CompiledName = methodName then
             Some call.Location
         else
             None
 
-    /// Return the location if the interface is implemented in the context
-    let matchImplements _interfaceName (ctx:TastContext) =
-        let _declaringEntity =
-            option {
-                let! call = ctx.Try<Tast.NewObjectExpr>()
-                let! declaringEntity = call.Ctor.DeclaringEntity
-                return declaringEntity
-                }
-            |> Option.defaultWith (fun _ -> raise EarlyReturn)
-
-        // todo
-        None
+    /// Return the location if the interface is implemented by a new object in the context
+    let matchImplements interfaceName (ctx:TastContext) =
+        option {
+            let! ctorCtx = NewObjectExprHelper.tryMatch ctx
+            let! declaringEntity = ctorCtx.Node.Ctor.DeclaringEntity
+            let! entity = EntityHelper.tryGet declaringEntity
+            let isImplementor = entity |> EntityHelper.implements interfaceName
+            return!
+                if isImplementor then
+                    Some ctorCtx.Node.Location
+                else
+                    None
+            }
 
     /// True if the property setter is called
     let matchPropertySetter className propertyName (ctx:TastContext) =
@@ -61,17 +57,18 @@ module Private =
         matchMethod className methodName ctx
 
     /// True if the new object derives from the specified base class
-    let matchDerivesFrom _baseclassName (ctx:TastContext) =
-        let _declaringEntity =
-            option {
-                let! call = ctx.Try<Tast.NewObjectExpr>()
-                let! declaringEntity = call.Ctor.DeclaringEntity
-                return declaringEntity
-                }
-            |> Option.defaultWith (fun _ -> raise EarlyReturn)
-
-        // todo
-        None
+    let matchDerivesFrom baseclassName (ctx:TastContext) =
+        option {
+            let! ctorCtx = NewObjectExprHelper.tryMatch ctx
+            let! declaringEntity = ctorCtx.Node.Ctor.DeclaringEntity
+            let! entity = EntityHelper.tryGet declaringEntity
+            let isImplementor = entity |> EntityHelper.derives baseclassName
+            return!
+                if isImplementor then
+                    Some ctorCtx.Node.Location
+                else
+                    None
+            }
 
     let allChecks = [
         // ASP.NET Core
@@ -114,6 +111,6 @@ module Private =
 open Private
 
 /// The implementation of the rule
-[<Rule(DiagnosticId)>]
+//[<Rule(DiagnosticId)>]
 let Rule : Rule = fun ctx ->
     checkWithEarlyReturn runChecks ctx

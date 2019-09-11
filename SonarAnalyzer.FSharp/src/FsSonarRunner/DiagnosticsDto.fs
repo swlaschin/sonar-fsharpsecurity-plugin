@@ -102,7 +102,7 @@ module IssueDto =
 
         let ruleKey = diagnostic.Descriptor.Id
         let message = diagnostic.Message
-        let filename = diagnostic.Location.FileName
+        let filename = diagnostic.Location.FileInfo.FullName
         let startLine = diagnostic.Location.StartLine
         let startColumn = diagnostic.Location.StartColumn
         let endLine = diagnostic.Location.EndLine

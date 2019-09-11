@@ -3,6 +3,8 @@
 open SonarAnalyzer.FSharp
 open SonarAnalyzer.FSharp.RuleHelpers
 open FSharpAst
+open OptionBuilder
+open EarlyReturn
 
 // =================================================
 // #2077 Formatting SQL queries is security-sensitive
@@ -15,15 +17,6 @@ module Private =
     let DiagnosticId = "S2077"
     let messageFormat = "Make sure that executing SQL queries is safe here."
     let rule = DiagnosticDescriptor.Create(DiagnosticId, messageFormat, RspecStrings.ResourceManager)
-
-    exception EarlyReturn
-
-    let checkWithEarlyReturn f x =
-        try
-            f x
-        with
-        | :? EarlyReturn ->
-            None
 
     // =================================
     // common logic
@@ -73,7 +66,7 @@ module Private =
         | Tast.ObjectExpr _
             -> false
         | Tast.CallExpr expr ->
-            isConstantOpt expr.Expression
+            isConstantOpt expr.Instance
             && (expr.Args |> List.forall isConstantExpression )
         | Tast.LambdaExpr expr ->
             isConstantExpression expr.Body
@@ -123,8 +116,8 @@ module Private =
     /// * it uses Concat, Format etc
     /// * it is not a constant expression
     let isArgBad (arg:Tast.Expression) (argType:Tast.FSharpType) =
-        (argType |> isType WellKnownType.string) // arg must be string
-        && (isConcatenatedOrFormatted arg) // and combined
+        argType |> TypeHelper.isType WellKnownType.string // arg must be string
+        && isConcatenatedOrFormatted arg  // and combined
         && not (isConstantExpression arg) // if whole arg is a constant, then it's not bad
 
     /// check whether the arg at an index is bad
@@ -147,21 +140,23 @@ module Private =
             "ExecuteSqlCommand"
             ]
 
-        let call, _declaringEntity =
+        let callCtx,_ =
             option {
-                let! call = ctx.Try<Tast.CallExpr>()
-                let! declaringEntity = call.Member.DeclaringEntity
-                return call,declaringEntity
+                let! callCtx = CallExprHelper.tryMatch ctx
+                let! declaringEntity = callCtx.Node.Member.DeclaringEntity
+                return callCtx,declaringEntity
                 }
             |> Option.defaultWith (fun _ -> raise EarlyReturn)
 
+        let callExpr = callCtx.Node
+
         // check the member being called
-        if checkedNames |> List.contains call.Member.CompiledName |> not then raise EarlyReturn
+        if checkedNames |> List.contains callExpr.Member.CompiledName |> not then raise EarlyReturn
 
         // is arg0 or arg1 bad
-        let isArgNBad = isArgNBad call.Args call.ArgTypes
+        let isArgNBad = isArgNBad callExpr.Args callExpr.ArgTypes
         if (isArgNBad 0) || (isArgNBad 1) then
-            Diagnostic.Create(rule, call.Location, call.Member.CompiledName) |> Some
+            Diagnostic.Create(rule, callExpr.Location, callExpr.Member.CompiledName) |> Some
         else
             None
 
@@ -181,22 +176,24 @@ module Private =
         "OracleDataAdapter"
         ]
 
-    let isClassNameTracked className =
+    let isATrackedClassName className =
         classNames |> List.contains className
 
     /// Check that constructors such as SqlCommand are used OK
     let checkConstructors (ctx:TastContext) =
 
-        let newObjExpr, declaringEntity =
+        let newObjCtx, declaringEntity =
             option {
-                let! newObjExpr = ctx.Try<Tast.NewObjectExpr>()
-                let! declaringEntity = newObjExpr.Ctor.DeclaringEntity
-                return newObjExpr,declaringEntity
+                let! newObjCtx = NewObjectExprHelper.tryMatch ctx
+                let! declaringEntity = newObjCtx.Node.Ctor.DeclaringEntity
+                return newObjCtx,declaringEntity
                 }
             |> Option.defaultWith (fun _ -> raise EarlyReturn)
 
         // is the class one of the ones we're interested in?
-        if not (isClassNameTracked declaringEntity.CompiledName) then raise EarlyReturn
+        if not (isATrackedClassName declaringEntity.CompiledName) then raise EarlyReturn
+
+        let newObjExpr = newObjCtx.Node
 
         // some args available?
         if newObjExpr.Args.IsEmpty then raise EarlyReturn
@@ -205,7 +202,7 @@ module Private =
         let isArgNBad = isArgNBad newObjExpr.Args newObjExpr.ArgTypes
         if isArgNBad 0 |> not then raise EarlyReturn
 
-        Diagnostic.Create(rule, newObjExpr.Location, declaringEntity.DisplayName) |> Some
+        Diagnostic.Create(rule, newObjExpr.Location, declaringEntity.CompiledName) |> Some
 
 
     // =================================
@@ -219,39 +216,35 @@ module Private =
             "set_CommandText"
             ]
 
-        let call, _declaringEntity =
+        let callCtx, _declaringEntity =
             option {
-                let! call = ctx.Try<Tast.CallExpr>()
-                let! declaringEntity = call.Member.DeclaringEntity
-                return call,declaringEntity
+                let! callCtx = CallExprHelper.tryMatch ctx
+                let! declaringEntity = callCtx.Node.Member.DeclaringEntity
+                return callCtx,declaringEntity
                 }
             |> Option.defaultWith (fun _ -> raise EarlyReturn)
 
+        let callExpr = callCtx.Node
+
         // check the member being called
-        if checkedNames |> List.contains call.Member.CompiledName |> not then raise EarlyReturn
+        if checkedNames |> List.contains callExpr.Member.CompiledName |> not then raise EarlyReturn
 
         // is the set value bad?
-        let isArgNBad = isArgNBad call.Args call.ArgTypes
+        let isArgNBad = isArgNBad callExpr.Args callExpr.ArgTypes
         if (isArgNBad 0) then
-            Diagnostic.Create(rule, call.Location, call.Member.CompiledName) |> Some
+            Diagnostic.Create(rule, callExpr.Location, callExpr.Member.CompiledName) |> Some
         else
             None
 
-
-
-    /// Call the first function and if that fails, call the second function
-    let ( <|> ) f g x =
-        match (f x) with
-        | Some r -> Some r
-        | None -> g x
 
 open Private
 
 /// The implementation of the rule
 [<Rule(DiagnosticId)>]
 let Rule : Rule = fun ctx ->
+    let (<|>) = EarlyReturn.orElse
     let rule =
-        (checkWithEarlyReturn checkExecuteSqlCommand)
-        <|> (checkWithEarlyReturn checkConstructors)
-        <|> (checkWithEarlyReturn checkCommandTextSetter)
+        checkExecuteSqlCommand
+        <|> checkConstructors
+        <|> checkCommandTextSetter
     rule ctx

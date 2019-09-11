@@ -4,18 +4,26 @@ module rec FSharpAst.Tast
 (*
 A Typed AST based on the FSharp.Compiler.Service Typed AST, but clearer and more tractable.
 
+References to "Spec" mean the F# Compiler spec.
+Currently at https://fsharp.org/specs/language-spec/4.1/FSharpSpec-4.1-latest.pdf
+
+"Spec#5" means Spec, chapter 5.
+"Spec#5.2.1" means Spec, section 5.2.1
+
 *)
 
 open System
+open System.Collections.Generic
+open System.IO
 
 
 // ================================================
 // Common/Shared
 // ================================================
 
-/// The location of a declaration or implementation
+/// The location of a node in the Tast
 type Location = {
-    FileName : string
+    FileInfo : FileInfo
     StartLine : int
     StartColumn : int
     EndLine : int
@@ -23,17 +31,19 @@ type Location = {
     }
     with
     override this.ToString() =
-        sprintf "%s:%i:%i" this.FileName this.StartLine this.StartColumn
+        sprintf "%s:%i:%i" this.FileInfo.Name this.StartLine this.StartColumn
     // a null location for when we don't have one
     static member NullLocation =
-        {FileName=""; StartLine=0; StartColumn=0; EndLine=0; EndColumn=0 }
+        {FileInfo=FileInfo __SOURCE_FILE__; StartLine=0; StartColumn=0; EndLine=0; EndColumn=0 }
 
 /// An unhandled element in the source file
 type Unhandled = {
     Comment : string
-    Location : Location option
+    Value : obj
+    Location : Location
     }
 
+/// The list of XML doc strings (such as this one!) associated with a declaration
 type XmlDoc = string list
 
 type QualifiedName = QualifiedName of string
@@ -81,22 +91,59 @@ type TypeName = TypeName of string
 //}
 
 // ================================================
-// Assembly and files
+// Keys
 // ================================================
 
-
-type Assembly = {
-    Files: ImplementationFile list
+/// A unique identifier for a named type.
+/// To get the actual definition of the type, use the Descriptor to look it up in the NamedType dictionary.
+type NamedTypeDescriptor = {
+    /// The namespaces and modules this type is defined in.
+    /// Eg. "MyNamespace.MyModule.MySubmodule"
+    /// If any of these contain non-standard characters, they are wrapped in double backticks in the usual way.
+    /// Eg. "MyNamespace.``My Module``.MySubmodule"
+    AccessPath: string
+    /// The CompiledName is used rather that the diplay name because it is unique
+    /// and might be different from the DisplayName.
+    /// 1) modules or other entities that have a CompiledNameAttribute
+    /// 2) generic params cause the name to have a back tick followed by the number of generic params.
+    ///    E.g. "MyType<'a>" has CompiledName="MyType`1"
+    CompiledName : string
     }
 
+/// A unique identifier for a member, function or value.
+/// To get the actual definition, you can look it up in the Mfv Dictionary
+type MfvDescriptor = {
+    DeclaringEntity : NamedTypeDescriptor option
+    CompiledName : string
+    }
+
+// ================================================
+// Project and files
+// ================================================
+
+/// The root node of the typed abstract syntax tree
+type Project = {
+    /// The project file that was analyzed. None if not applicable.
+    ProjectFile : FileInfo option
+    /// The Tast for each implementation file in the project
+    Files: ImplementationFile list
+    /// A quick way to find information about named types that were encountered during analysis
+    NamedTypeDict : Dictionary<NamedTypeDescriptor,NamedType>
+    /// A quick way to find information about MFVs that were encountered during analysis
+    MfvDict : Dictionary<MfvDescriptor,MfvDecl>
+    }
+
+/// An implementation file (as opposed to a signature file, etc) that has been analyzed.
+/// It contains a list of top-level declarations.
 type ImplementationFile = {
-    Name : string
+    FileInfo : FileInfo
     Decls: ImplementationFileDecl list
     }
 
+/// A top-level declaration in an implementation file
 type ImplementationFileDecl =
     | Entity of Entity
-    | MemberOrFunctionOrValue of MemberOrFunctionOrValue
+    | MfvDecl of MfvDecl
     | InitAction of InitAction
 
 // ================================================
@@ -124,44 +171,73 @@ type Module = {
     }
 
 /// A entity representing a type declaration.
-/// See "5 Types and Type Constraints"
+/// See Spec#5.4.1
 type TypeEntity =
-    | UnknownTypeEntity of string * Location
+    | UnhandledTypeEntity of Unhandled
+    /// Types defined outside of this project
     | NonFSharpType of NonFSharpType
     | TypeAbbreviation of TypeAbbreviationDecl
-    | Record of RecordDecl
+    | ClassDecl of Unhandled
+    | InterfaceDecl of Unhandled
+    | DelegateDecl of Unhandled
+    | StructDecl of Unhandled
+    | RecordDecl of RecordDecl
+    | UnionDecl of Unhandled
+    | EnumDecl of Unhandled
+    | ExceptionDecl of Unhandled
+    | MeasureDecl of Unhandled
+    | AbstractDecl of Unhandled
 
-//Type definitions have a kind which is one of the following:
-// Class
-// Interface
-// Delegate
-// Struct
-// Record
-// Union
-// Enum
-// Measure
-// Abstract
 
-/// A unique identifier for a named type.
-/// To get the actual definition, you can use the id to look it up in the NamedType Dictionary
-type NamedTypeDescriptor = {
-    AccessPath: string
-    /// The name of the type as seen in source code
-    DisplayName : string
-    /// The CompiledName might be different from the DisplayName
-    /// 1) modules or other entities that have a CompiledNameAttribute
-    /// 2) generic params cause the name to have a back tick followed by the number of generic params.
-    ///    E.g. "MyType<'a>" has CompiledName="MyType`1"
-    CompiledName : string
+/// Fields all type declarations have in common
+type TypeEntityCommon = {
+    Name : string
+    EnclosingEntity : NamedTypeDescriptor option
+    XmlDoc : XmlDoc
+    Accessibility : Accessibility
+    Attributes : Attribute list
+    GenericParameters : GenericParameter list
+    MemberOrFunctionOrValues : MfvDecl list
+    Location : Location
     }
 
-/// A unique identifier for a member.
-/// To get the actual definition, you can use the id to look it up in the Member Dictionary
-type MemberDescriptor = {
-    DeclaringEntity : NamedTypeDescriptor option
-    CompiledName : string
-    DisplayName : string
+/// Declaration of a Type Abbreviation
+type TypeAbbreviationDecl = {
+    Common: TypeEntityCommon
+    // custom to this type
+    AbbreviatedType : FSharpType
     }
+
+/// Declaration of a Record
+type RecordDecl = {
+    Common: TypeEntityCommon
+    // custom to this type
+    Fields : FieldDecl list
+    }
+
+type FieldDecl = {
+    Name : string
+    Type : FSharpType
+    }
+
+type UnionCase = {
+    Location : Location
+    Name : string
+    XmlDoc : XmlDoc
+    Accessibility : Accessibility
+    Attributes : Attribute list
+    ReturnType : FSharpType
+    Fields : FieldDecl list
+    }
+
+type ClassDecl= {
+    Name : string
+    }
+
+
+// ============================================================
+// Attributes associated with a declaration
+// ============================================================
 
 /// Information about how an Attribute is constructed. E.g. [<MyAttribute(param1)>]
 [<CustomEquality; CustomComparison>]
@@ -210,7 +286,12 @@ type Attribute =
     NamedArguments : AttributeNamedArgument list
     }
 
-// See 5.2 Type Constraints
+// ============================================================
+// Parameters for a type constructor (aka Generic Parameter)
+// ============================================================
+
+
+/// See Spec#5.2 "Type Constraints"
 type GenericParameterConstraint =
     | SubtypeConstraint of FSharpType
     | SupportsNullConstraint
@@ -248,8 +329,15 @@ type GenericParameter = {
 /// A GenericParameter cen be a normal type, or a measure
 type GenericParameterKind = TypeKind | MeasureKind
 
+// ================================================
+// Type expressions
+// ================================================
+
 /// A type expression. Can be a named type, a tuple, a function type, etc.
-/// See "5.1 Checking Syntactic Types"
+/// For example, in "let x: int * int", "int * int" is a type expression.
+/// A specific type expression can have arguments. For example, in "let x: List<int>",
+/// the type is "List<'T>" with a type argument of "int".
+/// See Spec#5.1 "Checking Syntactic Types"
 type FSharpType =
     /// A type expression we don't know how to handle
     | UnknownFSharpType of string
@@ -311,99 +399,55 @@ type NonFSharpType = {
     GenericParameters : GenericParameter list
     }
 
-/// Fields all type declarations have in common
-type TypeEntityCommon = {
-    Location : Location
-    Name : string
-    Namespace : string option
-    XmlDoc : XmlDoc
-    Accessibility : Accessibility
-    Attributes : Attribute list
-    GenericParameters : GenericParameter list
-    MemberOrFunctionOrValues : MemberOrFunctionOrValue list
-    }
-
-/// Declaration of a Type Abbreviation
-type TypeAbbreviationDecl = {
-    Common: TypeEntityCommon
-    // custom to this type
-    AbbreviatedType : FSharpType
-    }
-
-/// Declaration of a Record
-type RecordDecl = {
-    Common: TypeEntityCommon
-    // custom to this type
-    Fields : FieldDecl list
-    }
-
-type FieldDecl = {
-    Name : string
-    Type : FSharpType
-    }
-
-type UnionCase = {
-    Location : Location
-    Name : string
-    XmlDoc : XmlDoc
-    Accessibility : Accessibility
-    Attributes : Attribute list
-    ReturnType : FSharpType
-    Fields : FieldDecl list
-    }
-
-type Class = {
-    Name : string
-    }
-
-
 // ================================================
 // Members, functions and values
 // ================================================
 
-// A MemberOrFunctionOrValue contains code (in the form of expressions).
-type MemberOrFunctionOrValue =
-    | Member of MemberDecl
-    | Function of FunctionDecl
-    | Value of ValueDecl
+/// A top level MemberOrFunctionOrValue declaration contains code (in the form of expressions).
+/// Info for a MFV declaration is Name, type, attributes, etc.
+type MfvDecl =
+    | MemberDecl of MemberDecl
+    | FunctionDecl of FunctionDecl
+    | ValueDecl of ValueDecl
     | UnhandledMemberOrFunctionOrValue of Unhandled
-    | TopLevelLambdaValue of TopLevelLambdaValue
-
-type MFVInfo = {
-    Location : Location option
-    Name : string
-    XmlDoc : XmlDoc
-    Accessibility : Accessibility
-    Attributes : Attribute list
-    Type : FSharpType
-    }
+    | TopLevelLambdaValueDecl of TopLevelLambdaValueDecl
 
 type MemberDecl = {
-    Info : MFVInfo
-    EnclosingEntity : NamedTypeDescriptor option
-    Parameters : ParameterGroup<MFVInfo> list
+    Info : MfvInfo
+    Parameters : ParameterGroup<MfvInfo> list
     Body : Expression
+    Location : Location
     }
 
 type FunctionDecl = {
-    Info : MFVInfo
-    EnclosingEntity : NamedTypeDescriptor option
-    Parameters : ParameterGroup<MFVInfo> list
+    Info : MfvInfo
+    Parameters : ParameterGroup<MfvInfo> list
     Body : Expression
+    Location : Location
     }
 
-type TopLevelLambdaValue = {
-    Info : MFVInfo
-    EnclosingEntity : NamedTypeDescriptor option
-    Parameters : ParameterGroup<MFVInfo> list
+type TopLevelLambdaValueDecl = {
+    Info : MfvInfo
+    Parameters : ParameterGroup<MfvInfo> list
     Body : Expression
+    Location : Location
     }
 
 type ValueDecl = {
-    Info : MFVInfo
-    EnclosingEntity : NamedTypeDescriptor option
+    Info : MfvInfo
     Body : Expression
+    Location : Location
     }
+
+type MfvInfo = {
+    Name : string
+    Type : FSharpType
+    XmlDoc : XmlDoc
+    Accessibility : Accessibility
+    Attributes : Attribute list
+    EnclosingEntity : NamedTypeDescriptor option
+    }
+
 
 // ================================================
 // Expressions
@@ -463,16 +507,16 @@ type Expression =
     //| TraitCall of TraitCall
 
 
-/// A value expression references a MemberOrFunctionOrValue
-/// E.g let x = y where y is another value
+/// A value expression references a Mfv
+/// E.g ... = y where y is a Mfv declared elsewhere
 type ValueExpr = {
     // we don't care about the implementation of the MFV, only the common stuff such as name and type
-    Value : MFVInfo
+    Value : MfvDescriptor
     Location : Location
     }
 
 /// An "application" expression represents the application of function values
-/// E.g let x = f(1,"A") where f is the function, the types are [int; string] and the arguments are [1; "A"]
+/// E.g ... = f(1,"A") where f is the function, the arguments are [1; "A"], the arg types are [int; string]
 type ApplicationExpr = {
     Function : Expression
     Args : Expression list
@@ -480,7 +524,7 @@ type ApplicationExpr = {
     Location : Location
     }
 
-/// A "type lambda" matchs type abstractions
+/// A "type lambda" matches type abstractions
 /// TODO
 type TypeLambdaExpr = {
     GenericParameters : GenericParameter list
@@ -500,7 +544,7 @@ type DecisionTreeExpr = {
 /// TODO
 type DecisionTreeBranch = {
     Expr : Expression
-    Targets : MFVInfo list
+    Targets : MfvInfo list
     }
 
 /// Special expressions at the end of a conditional decision structure in the decision expression node of a DecisionTree .
@@ -516,7 +560,7 @@ type DecisionTreeSuccessExpr = {
 /// Matches expressions which are lambda abstractions
 /// TODO
 type LambdaExpr = {
-    Function : MFVInfo
+    Function : MfvInfo
     Body : Expression
     Location : Location
     }
@@ -567,7 +611,7 @@ type LetExpr = {
 /// let x = 1 the info is {name="x"; type=int} and the expression is "const 1"
 type Binding = {
     // info about the bound variable
-    Info : MFVInfo
+    Info : MfvInfo
     // what it is bound to
     Expression : Expression
     }
@@ -579,8 +623,10 @@ type Binding = {
 /// let x = y.m where m is a property on y.
 /// let x = y.m() where m is a method on y.
 type CallExpr = {
-    Expression : Expression option
-    Member : MemberDescriptor
+    // for static members and functions, this is None.
+    // for instance members and functions, this is the object to call against.
+    Instance : Expression option
+    Member : MfvDescriptor
     ClassTypeArgs : FSharpType list
     MethodTypeArgs : FSharpType list
     Args : Expression list
@@ -591,7 +637,7 @@ type CallExpr = {
 /// Matches expressions which are calls to object constructors
 /// TODO
 type NewObjectExpr = {
-    Ctor : MemberDescriptor
+    Ctor : MfvDescriptor
     // type args for generic classes. In "new X<int>()" int is a type arg
     TypeArgs : FSharpType list
     Args : Expression list
@@ -739,7 +785,7 @@ type AddressSetExpr = {
     }
 
 type ValueSetExpr = {
-    Variable : MFVInfo
+    Variable : MfvDescriptor
     Expr : Expression
     Location : Location
     }
@@ -792,9 +838,9 @@ type TryFinallyExpr = {
 
 type TryWithExpr = {
     Try : Expression
-    V1 : MFVInfo
+    V1 : MfvInfo
     V1Expr : Expression
-    V2 : MFVInfo
+    V2 : MfvInfo
     Handler : Expression
     Location : Location
     }
@@ -839,7 +885,7 @@ type ObjectExprOverride = {
     Signature : AbstractSignature
     Body : Expression
     GenericParameters : GenericParameter list
-    CurriedParameterGroups : ParameterGroup<MFVInfo> list
+    CurriedParameterGroups : ParameterGroup<MfvInfo> list
 }
 
 type ObjectExprInterfaceImplementation  = {
@@ -871,3 +917,5 @@ type AbstractSignature = {
 type InitAction = {
     Unhandled : Unhandled
     }
+
+

@@ -4,6 +4,8 @@ open SonarAnalyzer.FSharp
 open SonarAnalyzer.FSharp.RuleHelpers
 open FSharpAst
 open System.Net
+open OptionBuilder
+open EarlyReturn
 
 // =================================================
 // #1313 Using hardcoded IP addresses is security-sensitive
@@ -16,15 +18,6 @@ module Private =
     let DiagnosticId = "S1313"
     let messageFormat = "Make sure using this hardcoded IP address '{0}' is safe here."
     let rule = DiagnosticDescriptor.Create(DiagnosticId, messageFormat, RspecStrings.ResourceManager)
-
-    exception EarlyReturn
-
-    let checkWithEarlyReturn f node =
-        try
-            f node
-        with
-        | :? EarlyReturn ->
-            None
 
 
     let parseIpAddress str =
@@ -52,21 +45,21 @@ module Private =
 
     let ignoredNames = ["VERSION"; "ASSEMBLY"]
 
-    let isIgnoredMemberName (ctx:TastContext) =
+    let isContainedInIgnoredMemberName (ctx:TastContext<_>) =
         option {
             // if there is a containing call, get it, else drop through and return false later
-            let! _,node = tryContainingCall ctx
+            let! ctx = CallExprHelper.tryContainingCall (ctx.Box)
             let isContainedInMember name =
-                node.Member.CompiledName.ToUpperInvariant().Contains(name)
+                ctx.Node.Member.CompiledName.ToUpperInvariant().Contains(name)
             // if any matches found, return true
             return ignoredNames |> List.exists isContainedInMember
         } |> Option.defaultValue false
 
-    let isIgnoredClassName (ctx:TastContext) =
+    let isContainedInIgnoredClassName (ctx:TastContext<_>) =
         option {
             // if there is a containing call, get it, else drop through and return false later
-            let! _,node = tryContainingNewObjectExpr ctx
-            let! entity = node.Ctor.DeclaringEntity
+            let! ctx = NewObjectExprHelper.tryContainingNewObjectExpr (ctx.Box)
+            let! entity = ctx.Node.Ctor.DeclaringEntity
             let isContainedInClassName name =
                 entity.CompiledName.ToUpperInvariant().Contains(name)
             // if any matches found, return true
@@ -74,10 +67,11 @@ module Private =
         } |> Option.defaultValue false
 
 
-    let checkNode (ctx:TastContext) (node:Tast.ConstantExpr) =
-        if node.Type |> isType WellKnownType.string |> not then raise EarlyReturn
+    let checkConstantNode (ctx:TastContext<Tast.ConstantExpr>) =
+        // must be string literal
+        if ctx.Node.Type |> TypeHelper.isType WellKnownType.string |> not then raise EarlyReturn
 
-        let literalValue = (string node.Value) // .Trim() // null is converted to "" by `string` so this is safe
+        let literalValue = string ctx.Node.Value
         // Note Trim() is not used in the C# version
 
         let allowedValues = [""; "::"; "127.0.0.1"]
@@ -86,13 +80,13 @@ module Private =
         if not (isValidIpAddress literalValue) then raise EarlyReturn
 
         // check for ignored names such as "ASSEMBLY"
-        if isIgnoredClassName ctx then raise EarlyReturn
-        if isIgnoredMemberName ctx then raise EarlyReturn
+        if isContainedInIgnoredClassName ctx then raise EarlyReturn
+        if isContainedInIgnoredMemberName ctx then raise EarlyReturn
 
         // OK if used in an attribute
         // NB attributes are not normally visited in the AST. Must be asked for explicitly.
 
-        Diagnostic.Create(rule, node.Location, literalValue) |> Some
+        Diagnostic.Create(rule, ctx.Node.Location, literalValue) |> Some
 
 open Private
 
@@ -101,7 +95,8 @@ open Private
 let Rule : Rule = fun ctx ->
 
     // only trigger for constants
-    ctx.Try<Tast.ConstantExpr>()
-    |> Option.bind (checkWithEarlyReturn (checkNode ctx))
+    ctx
+    |> ContextHelper.tryCast<Tast.ConstantExpr>
+    |> Option.bind (checkWithEarlyReturn checkConstantNode)
 
 

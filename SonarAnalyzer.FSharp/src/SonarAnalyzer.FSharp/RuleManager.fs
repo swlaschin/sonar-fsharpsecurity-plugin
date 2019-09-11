@@ -8,6 +8,9 @@ open System
 open System.Reflection
 open System.Globalization
 
+let logger = Serilog.Log.Logger
+let loggerPrefix = "SonarAnalyzer.FSharp.RuleManager"
+
 
 /// Return all the assemblies that have rules in them
 let ruleContainingAssemblies() : Assembly list =
@@ -50,16 +53,18 @@ let private getResourceHtml(rule:AvailableRule) =
 
     let ruleDescriptionPathPattern = "SonarAnalyzer.FSharp.Rules.Description.{0}.html"
 
-    let resourceId =
+    let html =
         resources
         |> Seq.tryFind (fun r -> r = String.Format(ruleDescriptionPathPattern, ruleId) )
-        |> Option.defaultWith (fun () -> failwithf "Could not locate HTML resource for rule '%s'" ruleId)
-
-    let html =
-        use stream = rule.Assembly.GetManifestResourceStream(resourceId)
-        use reader = new IO.StreamReader(stream)
-        reader.ReadToEnd()
-
+        |> Option.map (fun resourceId ->
+            use stream = rule.Assembly.GetManifestResourceStream(resourceId)
+            use reader = new IO.StreamReader(stream)
+            reader.ReadToEnd()
+            )
+        |> Option.defaultWith (fun () ->
+            logger.Error("[{prefix}] Could not locate HTML resource for rule '{ruleId}'", loggerPrefix,ruleId)
+            "" // empty HTML
+            )
     html
 
 let private propertyTypeToString(propertyType:PropertyType) =
@@ -77,7 +82,9 @@ let toRuleDetail(rule:AvailableRule) =
         try
             resources.GetString(resourceName)
         with
-        | ex -> failwithf "Could not get resource for name '%s'. Exception: '%s'" resourceName ex.Message
+        | ex ->
+            logger.Error("[{prefix}] Could not get resource for name '{resourceName}' Exception: '{ex}'", loggerPrefix,resourceName,ex.Message)
+            ""  // empty string
 
     let toType typeStr =
         match typeStr with

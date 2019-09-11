@@ -20,7 +20,6 @@ let S2092_CookieShouldBeSecure() =
     Verifier.verify @"TestCases\S2092_CookieShouldBeSecure.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
 let S2245_DoNotUseRandom() =
     let rule = Rules.S2245_DoNotUseRandom.Rule
     Verifier.verify @"TestCases\S2245_DoNotUseRandom.fs" rule
@@ -32,7 +31,6 @@ let S2255_UsingCookies() =
     Verifier.verify @"TestCases\S2255_UsingCookies.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
 let S3011_BypassingAccessibility() =
     let rule = Rules.S3011_BypassingAccessibility.Rule
     Verifier.verify @"TestCases\S3011_BypassingAccessibility.fs" rule

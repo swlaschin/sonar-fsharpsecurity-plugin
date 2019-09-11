@@ -9,6 +9,8 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="RspecStrings.fs" />
     <Compile Include="Domain.fs" />
+    <Compile Include="OptionBuilder.fs" />
+    <Compile Include="EarlyReturn.fs" />
     <Compile Include="RuleHelpers.fs" />
     <Content Include="Rules.Description\notes.txt" />
     <EmbeddedResource Include="Rules.Description\S1104.html" />

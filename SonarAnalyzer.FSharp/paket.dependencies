@@ -1,6 +1,7 @@
 source https://www.nuget.org/api/v2
 
 nuget FSharp.Compiler.Service
+nuget Serilog
 
 group Build
 //nuget FAKE
