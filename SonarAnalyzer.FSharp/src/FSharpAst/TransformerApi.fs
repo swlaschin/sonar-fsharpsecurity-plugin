@@ -15,14 +15,46 @@ module FileApi =
     let logger = Serilog.Log.Logger
     let loggerPrefix = "FSharpAst"
 
+    // See: https://github.com/fsharp/FSharp.Compiler.Service/issues/847.
+    let private dotnetCoreReferences () =
+        let (</>) x y = Path.Combine(x, y)
+        let fsharpCoreDir = Path.GetDirectoryName(typeof<FSharp.Collections.List<_>>.Assembly.Location)
+        let runtimeDir = Path.GetDirectoryName(typeof<System.Object>.Assembly.Location)
+
+        [| fsharpCoreDir </> "FSharp.Core.dll"
+           runtimeDir </> "mscorlib.dll"
+           runtimeDir </> "System.Console.dll"
+           runtimeDir </> "System.Runtime.dll"
+           runtimeDir </> "System.Private.CoreLib.dll"
+           runtimeDir </> "System.ObjectModel.dll"
+           runtimeDir </> "System.IO.dll"
+           runtimeDir </> "System.Linq.dll"
+           runtimeDir </> "System.Net.Requests.dll"
+           runtimeDir </> "System.Runtime.Numerics.dll"
+           runtimeDir </> "System.Threading.Tasks.dll"
+
+           typeof<System.Console>.Assembly.Location
+           typeof<System.ComponentModel.DefaultValueAttribute>.Assembly.Location
+           typeof<System.ComponentModel.PropertyChangedEventArgs>.Assembly.Location
+           typeof<System.IO.BufferedStream>.Assembly.Location
+           typeof<System.Linq.Enumerable>.Assembly.Location
+           typeof<System.Net.WebRequest>.Assembly.Location
+           typeof<System.Numerics.BigInteger>.Assembly.Location
+           typeof<System.Threading.Tasks.TaskExtensions>.Assembly.Location |]
+        |> Array.distinct
+        |> Array.filter File.Exists
+        |> Array.distinctBy Path.GetFileName
+        |> Array.map (fun location -> "-r:" + location)
+
     /// Parse the source text associated with a file. Return a Result<AssemblyContents,Errors)
     let parseFileAndSource (filename:string) sourceText : Result<FSharpAssemblyContents,FSharpErrorInfo []> =
         let checker = FSharpChecker.Create(keepAssemblyContents=true)
-
+                
         async {
             // Get context representing a stand-alone (script) file
             let sourceText = SourceText.ofString sourceText
-            let! projOptions, _errors = checker.GetProjectOptionsFromScript(filename, sourceText)
+            let! projOptions, _errors = 
+                checker.GetProjectOptionsFromScript(filename, sourceText, otherFlags = dotnetCoreReferences())
 
             // do the check
 
@@ -41,7 +73,6 @@ module FileApi =
                 let msg = sprintf "Unexpected exception parsing file: '%s' Exception: '%s'" filename ex.Message
                 logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
                 failwith msg
-
 
     /// Parse a file. Return a Result<AssemblyContents,Errors)
     let parseFile (filename:string) : Result<FSharpAssemblyContents,FSharpErrorInfo []> =
