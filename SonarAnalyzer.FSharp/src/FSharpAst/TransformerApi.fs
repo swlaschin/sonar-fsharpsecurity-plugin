@@ -15,17 +15,45 @@ module FileApi =
     let logger = Serilog.Log.Logger
     let loggerPrefix = "FSharpAst"
 
+    // See: https://github.com/fsharp/FSharp.Compiler.Service/issues/847.
+    let private dotnetCoreReferences () =
+        let (</>) x y = Path.Combine(x, y)
+        let fsharpCoreDir = Path.GetDirectoryName(typeof<FSharp.Collections.List<_>>.Assembly.Location)
+        let runtimeDir = Path.GetDirectoryName(typeof<System.Object>.Assembly.Location)
+
+        [| 
+            yield fsharpCoreDir </> "FSharp.Core.dll"
+            yield! Directory.EnumerateFiles(runtimeDir, "*.dll")
+        |]
+        |> Array.distinct
+        |> Array.filter File.Exists
+        |> Array.distinctBy Path.GetFileName
+        |> Array.map (fun location -> "-r:" + location)
+
+    let getProjectOptions (checker:FSharpChecker) file (source: string) =
+        let sourceText = SourceText.ofString source
+        let assumeDotNetFramework = false
+
+        let (options, _diagnostics) =
+            checker.GetProjectOptionsFromScript(file, sourceText, assumeDotNetFramework = assumeDotNetFramework)
+            |> Async.RunSynchronously
+
+        let otherOptions =
+            if assumeDotNetFramework then options.OtherOptions
+            else
+                [| yield! options.OtherOptions |> Array.filter (fun x -> not (x.StartsWith("-r:")))
+                   yield! dotnetCoreReferences() |]
+
+        { options with OtherOptions = otherOptions }
+
     /// Parse the source text associated with a file. Return a Result<AssemblyContents,Errors)
     let parseFileAndSource (filename:string) sourceText : Result<FSharpAssemblyContents,FSharpErrorInfo []> =
         let checker = FSharpChecker.Create(keepAssemblyContents=true)
-
+                
         async {
-            // Get context representing a stand-alone (script) file
-            let sourceText = SourceText.ofString sourceText
-            let! projOptions, _errors = checker.GetProjectOptionsFromScript(filename, sourceText)
+            let projOptions = getProjectOptions checker filename sourceText
 
             // do the check
-
             let! projectResults = checker.ParseAndCheckProject(projOptions)
             return
                 if projectResults.HasCriticalErrors then
@@ -41,7 +69,6 @@ module FileApi =
                 let msg = sprintf "Unexpected exception parsing file: '%s' Exception: '%s'" filename ex.Message
                 logger.Error("[{prefix}] {msg}", loggerPrefix, msg)
                 failwith msg
-
 
     /// Parse a file. Return a Result<AssemblyContents,Errors)
     let parseFile (filename:string) : Result<FSharpAssemblyContents,FSharpErrorInfo []> =
