@@ -21,43 +21,39 @@ module FileApi =
         let fsharpCoreDir = Path.GetDirectoryName(typeof<FSharp.Collections.List<_>>.Assembly.Location)
         let runtimeDir = Path.GetDirectoryName(typeof<System.Object>.Assembly.Location)
 
-        [| fsharpCoreDir </> "FSharp.Core.dll"
-           runtimeDir </> "mscorlib.dll"
-           runtimeDir </> "System.Console.dll"
-           runtimeDir </> "System.Runtime.dll"
-           runtimeDir </> "System.Private.CoreLib.dll"
-           runtimeDir </> "System.ObjectModel.dll"
-           runtimeDir </> "System.IO.dll"
-           runtimeDir </> "System.Linq.dll"
-           runtimeDir </> "System.Net.Requests.dll"
-           runtimeDir </> "System.Runtime.Numerics.dll"
-           runtimeDir </> "System.Threading.Tasks.dll"
-
-           typeof<System.Console>.Assembly.Location
-           typeof<System.ComponentModel.DefaultValueAttribute>.Assembly.Location
-           typeof<System.ComponentModel.PropertyChangedEventArgs>.Assembly.Location
-           typeof<System.IO.BufferedStream>.Assembly.Location
-           typeof<System.Linq.Enumerable>.Assembly.Location
-           typeof<System.Net.WebRequest>.Assembly.Location
-           typeof<System.Numerics.BigInteger>.Assembly.Location
-           typeof<System.Threading.Tasks.TaskExtensions>.Assembly.Location |]
+        [| 
+            yield fsharpCoreDir </> "FSharp.Core.dll"
+            yield! Directory.EnumerateFiles(runtimeDir, "*.dll")
+        |]
         |> Array.distinct
         |> Array.filter File.Exists
         |> Array.distinctBy Path.GetFileName
         |> Array.map (fun location -> "-r:" + location)
+
+    let getProjectOptions (checker:FSharpChecker) file (source: string) =
+        let sourceText = SourceText.ofString source
+        let assumeDotNetFramework = false
+
+        let (options, _diagnostics) =
+            checker.GetProjectOptionsFromScript(file, sourceText, assumeDotNetFramework = assumeDotNetFramework)
+            |> Async.RunSynchronously
+
+        let otherOptions =
+            if assumeDotNetFramework then options.OtherOptions
+            else
+                [| yield! options.OtherOptions |> Array.filter (fun x -> not (x.StartsWith("-r:")))
+                   yield! dotnetCoreReferences() |]
+
+        { options with OtherOptions = otherOptions }
 
     /// Parse the source text associated with a file. Return a Result<AssemblyContents,Errors)
     let parseFileAndSource (filename:string) sourceText : Result<FSharpAssemblyContents,FSharpErrorInfo []> =
         let checker = FSharpChecker.Create(keepAssemblyContents=true)
                 
         async {
-            // Get context representing a stand-alone (script) file
-            let sourceText = SourceText.ofString sourceText
-            let! projOptions, _errors = 
-                checker.GetProjectOptionsFromScript(filename, sourceText, otherFlags = dotnetCoreReferences())
+            let projOptions = getProjectOptions checker filename sourceText
 
             // do the check
-
             let! projectResults = checker.ParseAndCheckProject(projOptions)
             return
                 if projectResults.HasCriticalErrors then
