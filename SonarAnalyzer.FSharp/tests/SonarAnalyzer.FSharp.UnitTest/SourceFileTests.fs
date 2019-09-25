@@ -20,7 +20,6 @@ let S2092_CookieShouldBeSecure() =
     Verifier.verify @"TestCases\S2092_CookieShouldBeSecure.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
 let S2245_DoNotUseRandom() =
     let rule = Rules.S2245_DoNotUseRandom.Rule
     Verifier.verify @"TestCases\S2245_DoNotUseRandom.fs" rule
