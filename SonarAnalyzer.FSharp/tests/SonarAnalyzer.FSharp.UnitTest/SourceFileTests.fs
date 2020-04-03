@@ -25,7 +25,7 @@ let S2245_DoNotUseRandom() =
     Verifier.verify @"TestCases\S2245_DoNotUseRandom.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
+[<Ignore("not implemented")>]//Requires NuGet
 let S2255_UsingCookies() =
     let rule = Rules.S2255_UsingCookies.Rule
     Verifier.verify @"TestCases\S2255_UsingCookies.fs" rule
@@ -36,13 +36,12 @@ let S3011_BypassingAccessibility() =
     Verifier.verify @"TestCases\S3011_BypassingAccessibility.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
+[<Ignore("not implemented")>]//Requires NuGet
 let S4507_DeliveringDebugFeaturesInProduction() =
     let rule = Rules.S4507_DeliveringDebugFeaturesInProduction.Rule
     Verifier.verify @"TestCases\S4507_DeliveringDebugFeaturesInProduction.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
 let S4784_UsingRegularExpressions() =
     let rule = Rules.S4784_UsingRegularExpressions.Rule
     Verifier.verify @"TestCases\S4784_UsingRegularExpressions.fs" rule
@@ -60,13 +59,13 @@ let S4790_CreatingHashAlgorithms() =
     Verifier.verify @"TestCases\S4790_CreatingHashAlgorithms.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
+[<Ignore("not implemented")>]//Requires NuGet
 let S4792_ConfiguringLoggers_AspNetCore() =
     let rule = Rules.S4792_ConfiguringLoggers.Rule
     Verifier.verify @"TestCases\S4792_ConfiguringLoggers_AspNetCore.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
+[<Ignore("not implemented")>]//Requires NuGet
 let S4792_ConfiguringLoggers_Serilog() =
     let rule = Rules.S4792_ConfiguringLoggers.Rule
     Verifier.verify @"TestCases\S4792_ConfiguringLoggers_Serilog.fs" rule
@@ -90,7 +89,7 @@ let S4829_ReadingStandardInput() =
     Verifier.verify @"TestCases\S4829_ReadingStandardInput.fs" rule
 
 [<Test>]
-[<Ignore("not implemented")>]
+[<Ignore("not implemented")>]//Requires NuGet
 let S4834_ControllingPermissions() =
     let rule = Rules.S4834_ControllingPermissions.Rule
     Verifier.verify @"TestCases\S4834_ControllingPermissions.fs" rule
