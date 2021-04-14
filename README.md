@@ -32,8 +32,8 @@ Install SonarQube:
 
 Install the plugin:
 
-1. Download [the plugin `sonar-fsharpsecurity-plugin.jar` file from Appveyor](https://ci.appveyor.com/project/swlaschin/sonar-fsharpsecurity-plugin/build/artifacts).
-1. Shut down SonarQube, then copy the plugin `sonar-fsharpsecurity-plugin.jar` file to the [SonarQube plugins directory](https://docs.sonarqube.org/latest/setup/install-plugin/) and restart SonarQube.
+1. Follow the  [instructions for building the SonarQube plugin](docs/contributing-plugin.md), which will produce the plugin `sonar-fsharpsecurity-plugin-${version}.jar`.
+1. Shut down SonarQube, then copy the plugin `sonar-fsharpsecurity-plugin-${version}.jar` file *without* the version suffix to the [SonarQube plugins directory](https://docs.sonarqube.org/latest/setup/install-plugin/) and restart SonarQube.
 
 Prepare for using SonarScanner:
 
