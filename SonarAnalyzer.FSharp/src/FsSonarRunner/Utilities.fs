@@ -12,7 +12,8 @@ open System.Text
 let logger = Serilog.Log.Logger
 
 let serializeToXmlFile filePath (objectToSerialize:obj) =
-    let settings = XmlWriterSettings(Indent = true,Encoding = Encoding.UTF8,IndentChars = "  ")
+    let settings = XmlWriterSettings(Indent = true,Encoding = new UTF8Encoding(false),IndentChars = "  ")
+    
     let serializer = new XmlSerializer(objectToSerialize.GetType())
     let namespaces = XmlSerializerNamespaces [|XmlQualifiedName.Empty |]
 
