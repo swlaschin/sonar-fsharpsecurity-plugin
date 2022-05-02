@@ -1,3 +1,12 @@
+Originally, this plugin was hosted on https://github.com/swlaschin/sonar-fsharpsecurity-plugin. However, 
+[Scott Wlaschin has commented](https://github.com/jmecosta/sonar-fsharp-plugin/issues/96#issuecomment-630816652) 
+that he won't be maintaining this project anymore. 
+
+The `sonar-fsharpsecurity-plugin` dir contains the original plugin code plus the changes needed for it to compile
+and to make it work with SonarQube.
+
+Original content follows:
+
 # sonar-fsharpsecurity-plugin
 
 sonar-fsharpsecurity-plugin is a F# plugin for SonarQube focused on security/vuln scanning only.

@@ -8,8 +8,8 @@
   <includeBaseDirectory>false</includeBaseDirectory>
   <fileSets>
     <fileSet>
-      <directory>src/FsSonarRunner/publish</directory>
-      <outputDirectory>\</outputDirectory>
+      <directory>publish</directory>
+      <outputDirectory>/</outputDirectory>
       <includes>
         <include>win-x86/**</include>
         <include>linux-x86/**</include>
