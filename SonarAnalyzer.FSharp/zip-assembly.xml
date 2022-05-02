@@ -9,7 +9,7 @@
   <fileSets>
     <fileSet>
       <directory>publish</directory>
-      <outputDirectory>\</outputDirectory>
+      <outputDirectory>/</outputDirectory>
       <includes>
         <include>win-x86/**</include>
         <include>linux-x86/**</include>
